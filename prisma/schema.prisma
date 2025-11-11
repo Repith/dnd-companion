@@ -1,0 +1,180 @@
+// Prisma schema defining the core domain entities for DnD Companion.
+//
+// This schema uses PostgreSQL as the default provider and includes
+// enumerations for user roles, character classes, races, and skills.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  PLAYER
+  DM
+  ADMIN
+}
+
+enum CharacterClass {
+  BARBARIAN
+  BARD
+  CLERIC
+  DRUID
+  FIGHTER
+  MONK
+  PALADIN
+  RANGER
+  ROGUE
+  SORCERER
+  WARLOCK
+  WIZARD
+  ARTIFICER
+}
+
+enum Race {
+  HUMAN
+  ELF
+  DWARF
+  HALFLING
+  DRAGONBORN
+  GNOME
+  HALF_ELF
+  HALF_ORC
+  TIEFLING
+  AASIMAR
+  GENASI
+  TABAXI
+  TORTLE
+}
+
+// Many abilities and skills in DnD 5e relate back to a specific ability.
+enum AbilityName {
+  STRENGTH
+  DEXTERITY
+  CONSTITUTION
+  INTELLIGENCE
+  WISDOM
+  CHARISMA
+}
+
+enum SkillName {
+  ACROBATICS
+  ANIMAL_HANDLING
+  ARCANA
+  ATHLETICS
+  DECEPTION
+  HISTORY
+  INSIGHT
+  INTIMIDATION
+  INVESTIGATION
+  MEDICINE
+  NATURE
+  PERCEPTION
+  PERFORMANCE
+  PERSUASION
+  RELIGION
+  SLEIGHT_OF_HAND
+  STEALTH
+  SURVIVAL
+}
+
+model User {
+  id         Int       @id @default(autoincrement())
+  email      String    @unique
+  password   String
+  role       Role
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  characters Character[]
+  sessions   Session[]
+}
+
+model Character {
+  id            Int             @id @default(autoincrement())
+  userId        Int
+  user          User            @relation(fields: [userId], references: [id])
+  name          String
+  class         CharacterClass
+  race          Race
+  level         Int             @default(1)
+  alignment     String?
+  experience    Int             @default(0)
+  maxHitPoints  Int             @default(0)
+  currentHitPoints Int          @default(0)
+  hitDice       String?         // e.g. "1d10"
+  speed         Int             @default(30)
+  proficiencyBonus Int          @default(2)
+  abilityScores Json            // e.g. { "STRENGTH": 15, "DEXTERITY": 14, ... }
+  skillProficiencies Json       // e.g. { "ACROBATICS": true, "HISTORY": false, ... }
+  passivePerception Int         @default(10)
+  inspiration   Boolean         @default(false)
+  inventory     Item[]
+  spells        Spell[]
+  quests        CharacterQuest[]
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+}
+
+model Item {
+  id             Int       @id @default(autoincrement())
+  characterId    Int
+  character      Character @relation(fields: [characterId], references: [id])
+  name           String
+  description    String?
+  weight         Float     @default(0)
+  value          Int       @default(0)
+  magical        Boolean   @default(false)
+  quantity       Int       @default(1)
+  // Additional metadata such as modifiers can be stored as JSON
+  properties     Json?
+}
+
+model Spell {
+  id             Int       @id @default(autoincrement())
+  characterId    Int
+  character      Character @relation(fields: [characterId], references: [id])
+  name           String
+  level          Int       @default(0)
+  school         String?
+  castingTime    String?
+  range          String?
+  components     String?
+  duration       String?
+  description    String?
+}
+
+model Quest {
+  id             Int       @id @default(autoincrement())
+  title          String
+  description    String
+  experience     Int       @default(0)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  // Many‑to‑many relation with characters through CharacterQuest
+  participants    CharacterQuest[]
+}
+
+model CharacterQuest {
+  characterId Int
+  questId     Int
+  status      String       @default("IN_PROGRESS")
+  rewardClaimed Boolean    @default(false)
+  character   Character    @relation(fields: [characterId], references: [id])
+  quest       Quest        @relation(fields: [questId], references: [id])
+  @@id([characterId, questId])
+}
+
+model Session {
+  id           Int       @id @default(autoincrement())
+  userId       Int
+  user         User      @relation(fields: [userId], references: [id])
+  title        String
+  description  String?
+  startedAt    DateTime  @default(now())
+  endedAt      DateTime?
+  // Example field to demonstrate event sourcing: log of events during the session
+  events       Json?
+}
