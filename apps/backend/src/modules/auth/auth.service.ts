@@ -2,6 +2,8 @@ import { Injectable, UnauthorizedException, Logger } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import { UserService } from "../user/user.service";
 import { LoginUserDto } from "../user/dto/login-user.dto";
+import { Role } from "../../common/types";
+import { DemoSeederService } from "./demo-seeder.service";
 
 export interface JwtPayload {
   sub: string;
@@ -16,6 +18,7 @@ export class AuthService {
   constructor(
     private userService: UserService,
     private jwtService: JwtService,
+    private demoSeederService: DemoSeederService,
   ) {}
 
   async validateUser(email: string, password: string): Promise<any> {
@@ -88,5 +91,49 @@ export class AuthService {
     });
 
     return user;
+  }
+
+  async demoLogin(): Promise<any> {
+    // Create or get demo user
+    let demoUser = await this.userService.findByEmail("demo@dnd-companion.com");
+
+    if (!demoUser) {
+      this.logger.log("Creating demo user");
+      const createdUser = await this.userService.create({
+        email: "demo@dnd-companion.com",
+        username: "demo",
+        password: "demo123",
+        displayName: "Demo User",
+        roles: [Role.PLAYER],
+      });
+      // Get the raw user data after creation
+      demoUser = await this.userService.findByEmail("demo@dnd-companion.com");
+    }
+
+    if (!demoUser) {
+      throw new UnauthorizedException("Failed to create or find demo user");
+    }
+
+    // Mark as demo user
+    (demoUser as any).isDemo = true;
+
+    // Seed demo data for the user
+    await this.demoSeederService.seedDemoData(demoUser.id);
+
+    const payload: JwtPayload = {
+      sub: demoUser.id,
+      email: demoUser.email,
+      roles: demoUser.roles,
+    };
+
+    this.logger.log(`Demo login successful`, {
+      userId: demoUser.id,
+      email: demoUser.email,
+    });
+
+    return {
+      access_token: this.jwtService.sign(payload),
+      user: demoUser,
+    };
   }
 }

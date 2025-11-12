@@ -1,5 +1,11 @@
 import axios from "axios";
-import { LoginRequest, RegisterRequest, AuthResponse, User } from "#types/auth";
+import {
+  LoginRequest,
+  RegisterRequest,
+  AuthResponse,
+  User,
+} from "@/types/auth";
+import { handleApiError, withApiRetry } from "./error-handler";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002";
 
@@ -17,15 +23,20 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Response interceptor to handle 401 errors
+// Response interceptor to handle errors
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    const apiError = handleApiError(error);
+
+    if (apiError.status === 401) {
       // Token is invalid, clear it
       localStorage.removeItem("access_token");
+      // Dispatch custom event to notify AuthContext
+      window.dispatchEvent(new CustomEvent("auth:unauthorized"));
     }
-    return Promise.reject(error);
+
+    return Promise.reject(apiError);
   },
 );
 
@@ -50,6 +61,18 @@ export const authApi = {
   getProfile: async (): Promise<User> => {
     const response = await api.get<User>("/users/profile");
     return response.data;
+  },
+
+  demoLogin: async (): Promise<AuthResponse> => {
+    const response = await api.post<AuthResponse>("/auth/demo");
+    const authData = response.data;
+
+    // Store the access token
+    if (authData.access_token) {
+      localStorage.setItem("access_token", authData.access_token);
+    }
+
+    return authData;
   },
 
   logout: async (): Promise<void> => {

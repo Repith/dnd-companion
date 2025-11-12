@@ -6,6 +6,7 @@ import {
 } from "@nestjs/common";
 import { PrismaService } from "../../common/prisma/prisma.service";
 import { EventBusService } from "../events/event-bus.service";
+import { InventoryService } from "../inventory/inventory.service";
 import {
   EventType,
   DamageAppliedEvent,
@@ -26,6 +27,7 @@ export class CharacterService {
   constructor(
     private prisma: PrismaService,
     private eventBus: EventBusService,
+    private inventoryService: InventoryService,
   ) {}
 
   /**
@@ -220,6 +222,11 @@ export class CharacterService {
         multiclasses: true,
       },
     });
+
+    // Create inventory for the character
+    console.log(`Creating inventory for character ${character.id}`);
+    await this.inventoryService.createCharacterInventory(character.id);
+    console.log(`Successfully created inventory for character ${character.id}`);
 
     return this.mapToResponseDto(character);
   }

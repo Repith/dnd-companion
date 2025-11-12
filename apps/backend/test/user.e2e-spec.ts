@@ -1,8 +1,9 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { INestApplication, ValidationPipe } from "@nestjs/common";
-import * as request from "supertest";
+import request from "supertest";
 import { AppModule } from "../src/app.module";
 import { PrismaService } from "../src/common/prisma/prisma.service";
+import * as bcrypt from "bcrypt";
 
 describe("User (e2e)", () => {
   let app: INestApplication;
@@ -40,11 +41,12 @@ describe("User (e2e)", () => {
         })
         .expect(201)
         .expect((res) => {
-          expect(res.body).toHaveProperty("id");
-          expect(res.body.email).toBe("test@example.com");
-          expect(res.body.username).toBe("testuser");
-          expect(res.body.roles).toEqual(["PLAYER"]);
-          expect(res.body).not.toHaveProperty("passwordHash");
+          expect(res.body).toHaveProperty("access_token");
+          expect(res.body).toHaveProperty("user");
+          expect(res.body.user.email).toBe("test@example.com");
+          expect(res.body.user.username).toBe("testuser");
+          expect(res.body.user.roles).toEqual(["PLAYER"]);
+          expect(res.body.user).not.toHaveProperty("passwordHash");
         });
     });
 

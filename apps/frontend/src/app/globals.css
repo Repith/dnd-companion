@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "reactflow/dist/style.css";
 
 :root {
   --foreground-rgb: 0, 0, 0;

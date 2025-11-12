@@ -6,17 +6,20 @@ import { AuthController } from "./auth.controller";
 import { UserModule } from "../user/user.module";
 import { JwtStrategy } from "./strategies/jwt.strategy";
 import { RolesGuard } from "./guards/roles.guard";
+import { DemoSeederService } from "./demo-seeder.service";
+import { PrismaModule } from "../../common/prisma/prisma.module";
 
 @Module({
   imports: [
     forwardRef(() => UserModule),
+    PrismaModule,
     PassportModule,
     JwtModule.register({
       secret: process.env.JWT_SECRET || "dev-secret",
       signOptions: { expiresIn: "24h" },
     }),
   ],
-  providers: [AuthService, JwtStrategy, RolesGuard],
+  providers: [AuthService, JwtStrategy, RolesGuard, DemoSeederService],
   controllers: [AuthController],
   exports: [AuthService, JwtStrategy, RolesGuard],
 })

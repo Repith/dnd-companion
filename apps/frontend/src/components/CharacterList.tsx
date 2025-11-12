@@ -4,17 +4,20 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { CharacterResponseDto } from "@/types/character";
 import { characterApi } from "@/lib/api/character";
+import { ApiError } from "@/lib/api/error-handler";
 
 interface CharacterListProps {
   onCharacterSelect?: (character: CharacterResponseDto) => void;
+  onCreateCharacter?: () => void;
 }
 
 export default function CharacterList({
   onCharacterSelect,
+  onCreateCharacter,
 }: CharacterListProps) {
   const [characters, setCharacters] = useState<CharacterResponseDto[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<ApiError | null>(null);
 
   useEffect(() => {
     loadCharacters();
@@ -23,11 +26,13 @@ export default function CharacterList({
   const loadCharacters = async () => {
     try {
       setLoading(true);
+      setError(null);
       const data = await characterApi.getAll();
       setCharacters(data);
     } catch (err) {
-      setError("Failed to load characters");
-      console.error("Error loading characters:", err);
+      const apiError = err as ApiError;
+      setError(apiError);
+      console.error("Error loading characters:", apiError);
     } finally {
       setLoading(false);
     }
@@ -42,8 +47,9 @@ export default function CharacterList({
       await characterApi.delete(characterId);
       setCharacters(characters.filter((c) => c.id !== characterId));
     } catch (err) {
-      console.error("Error deleting character:", err);
-      alert("Failed to delete character");
+      const apiError = err as ApiError;
+      console.error("Error deleting character:", apiError);
+      alert(`Failed to delete character: ${apiError.message}`);
     }
   };
 
@@ -59,13 +65,15 @@ export default function CharacterList({
   if (error) {
     return (
       <div className="py-12 text-center">
-        <div className="mb-4 text-red-600">{error}</div>
-        <button
-          onClick={loadCharacters}
-          className="px-4 py-2 text-white bg-blue-600 rounded-md hover:bg-blue-700"
-        >
-          Try Again
-        </button>
+        <div className="mb-4 text-red-600">{error.message}</div>
+        {error.retryable && (
+          <button
+            onClick={loadCharacters}
+            className="px-4 py-2 text-white bg-blue-600 rounded-md hover:bg-blue-700"
+          >
+            Try Again
+          </button>
+        )}
       </div>
     );
   }
@@ -74,12 +82,12 @@ export default function CharacterList({
     return (
       <div className="py-12 text-center">
         <div className="mb-4 text-gray-500">No characters found</div>
-        <Link
-          href="/characters/create"
+        <button
+          onClick={onCreateCharacter}
           className="inline-block px-4 py-2 text-white bg-blue-600 rounded-md hover:bg-blue-700"
         >
           Create Your First Character
-        </Link>
+        </button>
       </div>
     );
   }
@@ -88,12 +96,12 @@ export default function CharacterList({
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold text-gray-900">Your Characters</h1>
-        <Link
-          href="/characters/create"
+        <button
+          onClick={onCreateCharacter}
           className="px-4 py-2 text-white bg-green-600 rounded-md hover:bg-green-700"
         >
           Create New Character
-        </Link>
+        </button>
       </div>
 
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -172,12 +180,12 @@ export default function CharacterList({
             </div>
 
             <div className="pt-4 mt-4 border-t">
-              <Link
-                href={`/characters/${character.id}`}
+              <button
+                onClick={() => onCharacterSelect?.(character)}
                 className="block w-full px-4 py-2 text-center text-white bg-gray-600 rounded-md hover:bg-gray-700"
               >
                 Open Character Sheet
-              </Link>
+              </button>
             </div>
           </div>
         ))}

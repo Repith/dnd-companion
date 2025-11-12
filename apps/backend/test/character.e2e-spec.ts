@@ -2,8 +2,9 @@ import { Test, TestingModule } from "@nestjs/testing";
 import { INestApplication, ValidationPipe } from "@nestjs/common";
 import { PrismaService } from "../src/common/prisma/prisma.service";
 import { AppModule } from "../src/app.module";
-import * as request from "supertest";
+import request from "supertest";
 import { CreateCharacterDto } from "../src/modules/character/dto";
+import * as bcrypt from "bcrypt";
 
 describe("Character (e2e)", () => {
   let app: INestApplication;
@@ -26,19 +27,27 @@ describe("Character (e2e)", () => {
     await prisma.character.deleteMany();
     await prisma.user.deleteMany();
 
-    // Create test user
+    // Create test user with hashed password
+    const saltRounds = 12;
+    const passwordHash = await bcrypt.hash("password123", saltRounds);
     const testUser = await prisma.user.create({
       data: {
         email: "test@example.com",
         username: "testuser",
-        passwordHash: "hashedpassword",
+        passwordHash,
         roles: ["PLAYER"],
       },
     });
     userId = testUser.id;
 
-    // Mock JWT token (in real scenario, you'd get this from auth service)
-    authToken = "mock-jwt-token";
+    // Get real JWT token by logging in
+    const loginResponse = await request(app.getHttpServer())
+      .post("/auth/login")
+      .send({
+        email: "test@example.com",
+        password: "password123",
+      });
+    authToken = loginResponse.body.access_token;
   });
 
   afterAll(async () => {
@@ -51,7 +60,7 @@ describe("Character (e2e)", () => {
     const createCharacterDto: CreateCharacterDto = {
       name: "Test Fighter",
       race: "HUMAN" as any,
-      class: "FIGHTER" as any,
+      multiclasses: [{ class: "FIGHTER" as any, level: 1 }],
       level: 1,
       experiencePoints: 0,
       inspiration: false,
@@ -227,6 +236,7 @@ describe("Character (e2e)", () => {
           languages: ["Common", "Elvish"],
           currency: { cp: 50, sp: 0, ep: 0, gp: 25, pp: 0 },
           ownerId: userId,
+        };
         });
 
       const characterId = createResponse.body.id;

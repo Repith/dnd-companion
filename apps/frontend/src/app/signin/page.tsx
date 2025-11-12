@@ -10,7 +10,7 @@ import { loginSchema, LoginFormData } from "@/lib/validations/auth";
 import { useTheme } from "next-themes";
 
 export default function SignInPage() {
-  const { login, isLoading, error } = useAuth();
+  const { login, demoLogin, isLoading, error } = useAuth();
   const router = useRouter();
   const { theme, setTheme } = useTheme();
   const [showPassword, setShowPassword] = useState(false);
@@ -27,6 +27,15 @@ export default function SignInPage() {
     try {
       await login(data);
       router.push("/dashboard"); // Redirect to dashboard after login
+    } catch (err) {
+      // Error is handled by AuthContext
+    }
+  };
+
+  const handleDemoLogin = async () => {
+    try {
+      await demoLogin();
+      router.push("/dashboard"); // Redirect to dashboard after demo login
     } catch (err) {
       // Error is handled by AuthContext
     }
@@ -171,6 +180,31 @@ export default function SignInPage() {
             >
               {isLoading ? "Signing in..." : "Sign in"}
             </button>
+          </div>
+
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-gray-300 dark:border-gray-600" />
+            </div>
+            <div className="relative flex justify-center text-sm">
+              <span className="px-2 text-gray-500 bg-gray-50 dark:bg-gray-900 dark:text-gray-400">
+                Or
+              </span>
+            </div>
+          </div>
+
+          <div>
+            <button
+              type="button"
+              onClick={handleDemoLogin}
+              disabled={isLoading}
+              className="relative flex justify-center w-full px-4 py-2 text-sm font-medium text-indigo-600 bg-white border border-indigo-600 rounded-md group hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-gray-800 dark:text-indigo-400 dark:border-indigo-400 dark:hover:bg-gray-700"
+            >
+              {isLoading ? "Loading demo..." : "Try Demo Mode"}
+            </button>
+            <p className="mt-2 text-xs text-center text-gray-500 dark:text-gray-400">
+              Explore all features with pre-populated sample data
+            </p>
           </div>
 
           <div className="flex items-center justify-end">

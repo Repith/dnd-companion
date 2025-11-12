@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
+import ProtectedRoute from "@/components/ProtectedRoute";
 import CharacterDashboard from "@/components/CharacterDashboard";
 import { CharacterResponseDto } from "@/types/character";
 import { characterApi } from "@/lib/api/character";
@@ -63,48 +64,44 @@ export default function CharacterPage() {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-50">
-        <div className="text-center">
-          <div className="w-12 h-12 mx-auto mb-4 border-b-2 border-blue-600 rounded-full animate-spin"></div>
-          <p className="text-gray-600">Loading character...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (error || !character) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-50">
-        <div className="text-center">
-          <div className="mb-4 text-red-600">
-            {error || "Character not found"}
-          </div>
-          <button
-            onClick={() => router.push("/characters")}
-            className="px-4 py-2 text-white bg-blue-600 rounded-md hover:bg-blue-700"
-          >
-            Back to Characters
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="px-4 py-6 mx-auto max-w-7xl sm:px-6 lg:px-8">
-        <div className="mb-6">
-          <button
-            onClick={() => router.push("/characters")}
-            className="flex items-center text-blue-600 hover:text-blue-800"
-          >
-            ← Back to Characters
-          </button>
+    <ProtectedRoute>
+      {loading ? (
+        <div className="flex items-center justify-center min-h-screen bg-gray-50">
+          <div className="text-center">
+            <div className="w-12 h-12 mx-auto mb-4 border-b-2 border-blue-600 rounded-full animate-spin"></div>
+            <p className="text-gray-600">Loading character...</p>
+          </div>
         </div>
-        <CharacterDashboard character={character} onUpdate={handleUpdate} />
-      </div>
-    </div>
+      ) : error || !character ? (
+        <div className="flex items-center justify-center min-h-screen bg-gray-50">
+          <div className="text-center">
+            <div className="mb-4 text-red-600">
+              {error || "Character not found"}
+            </div>
+            <button
+              onClick={() => router.push("/characters")}
+              className="px-4 py-2 text-white bg-blue-600 rounded-md hover:bg-blue-700"
+            >
+              Back to Characters
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="min-h-screen bg-gray-50">
+          <div className="px-4 py-6 mx-auto max-w-7xl sm:px-6 lg:px-8">
+            <div className="mb-6">
+              <button
+                onClick={() => router.push("/characters")}
+                className="flex items-center text-blue-600 hover:text-blue-800"
+              >
+                ← Back to Characters
+              </button>
+            </div>
+            <CharacterDashboard character={character} onUpdate={handleUpdate} />
+          </div>
+        </div>
+      )}
+    </ProtectedRoute>
   );
 }

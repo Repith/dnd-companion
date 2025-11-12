@@ -28,6 +28,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
   useEffect(() => {
     checkAuthStatus();
+
+    // Listen for unauthorized events from API interceptor
+    const handleUnauthorized = () => {
+      setUser(null);
+      setIsLoading(false);
+      setError(null);
+    };
+
+    window.addEventListener("auth:unauthorized", handleUnauthorized);
+
+    return () => {
+      window.removeEventListener("auth:unauthorized", handleUnauthorized);
+    };
   }, []);
 
   const checkAuthStatus = async () => {
@@ -51,6 +64,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       setUser(userData);
     } catch (err: any) {
       const errorMessage = err.response?.data?.message || "Login failed";
+      setError(errorMessage);
+      throw new Error(errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const demoLogin = async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const authResponse = await authApi.demoLogin();
+      // After demo login, fetch profile to get user data
+      const userData = await authApi.getProfile();
+      setUser(userData);
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.message || "Demo login failed";
       setError(errorMessage);
       throw new Error(errorMessage);
     } finally {
@@ -91,6 +121,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const value: AuthContextType = {
     user,
     login,
+    demoLogin,
     register,
     logout,
     isLoading,

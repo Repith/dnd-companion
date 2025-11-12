@@ -1,6 +1,7 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { InventoryService } from "./inventory.service";
 import { PrismaService } from "../../common/prisma/prisma.service";
+import { EventBusService } from "../events/event-bus.service";
 import {
   AddItemDto,
   UpdateInventoryItemDto,
@@ -20,6 +21,7 @@ describe("InventoryService", () => {
   const mockPrismaService = {
     inventory: {
       findUnique: jest.fn(),
+      findFirst: jest.fn(),
       create: jest.fn(),
     },
     inventoryItem: {
@@ -36,6 +38,13 @@ describe("InventoryService", () => {
       findUnique: jest.fn(),
       update: jest.fn(),
     },
+    campaign: {
+      findUnique: jest.fn(),
+    },
+  };
+
+  const mockEventBusService = {
+    publish: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -45,6 +54,10 @@ describe("InventoryService", () => {
         {
           provide: PrismaService,
           useValue: mockPrismaService,
+        },
+        {
+          provide: EventBusService,
+          useValue: mockEventBusService,
         },
       ],
     }).compile();
@@ -79,17 +92,16 @@ describe("InventoryService", () => {
             notes: null,
           },
         ],
-        character: {
-          abilityScores: {
-            strength: 15,
-          },
-        },
       };
 
       mockPrismaService.inventory.findUnique.mockResolvedValue(inventory);
       mockPrismaService.inventoryItem.findMany.mockResolvedValue(
         inventory.items,
       );
+      mockPrismaService.character.findUnique.mockResolvedValue({
+        ownerId: "user1",
+        abilityScores: { strength: 15 },
+      });
 
       const result = await service.findOne("1", "user1");
 
@@ -106,12 +118,12 @@ describe("InventoryService", () => {
         id: "1",
         ownerType: OwnerType.CHARACTER,
         ownerId: "char1",
-        character: {
-          ownerId: "otherUser",
-        },
       };
 
       mockPrismaService.inventory.findUnique.mockResolvedValue(inventory);
+      mockPrismaService.character.findUnique.mockResolvedValue({
+        ownerId: "otherUser",
+      });
 
       await expect(service.findOne("1", "user1")).rejects.toThrow(
         ForbiddenException,
@@ -127,15 +139,6 @@ describe("InventoryService", () => {
         notes: "Test notes",
       };
 
-      const inventory = {
-        id: "1",
-        ownerType: OwnerType.CHARACTER,
-        ownerId: "char1",
-        character: {
-          ownerId: "user1",
-        },
-      };
-
       const item = {
         id: "item1",
         name: "Longsword",
@@ -144,7 +147,29 @@ describe("InventoryService", () => {
         rarity: "COMMON",
       };
 
+      const inventory = {
+        id: "1",
+        ownerType: OwnerType.CHARACTER,
+        ownerId: "char1",
+        items: [
+          {
+            id: "invItem1",
+            inventoryId: "1",
+            itemId: "item1",
+            item,
+            quantity: 2,
+            equipped: false,
+            notes: "Test notes",
+          },
+        ],
+      };
+
       mockPrismaService.inventory.findUnique.mockResolvedValue(inventory);
+      mockPrismaService.character.findUnique.mockResolvedValue({
+        ownerId: "user1",
+        campaignId: null,
+      });
+      mockPrismaService.campaign.findUnique.mockResolvedValue(null);
       mockPrismaService.item.findUnique.mockResolvedValue(item);
       mockPrismaService.inventoryItem.findFirst.mockResolvedValue(null);
       mockPrismaService.inventoryItem.create.mockResolvedValue({
@@ -155,6 +180,18 @@ describe("InventoryService", () => {
         equipped: false,
         notes: "Test notes",
       });
+      // Mock for findOne call at the end
+      mockPrismaService.inventoryItem.findMany.mockResolvedValue([
+        {
+          id: "invItem1",
+          inventoryId: "1",
+          itemId: "item1",
+          item,
+          quantity: 2,
+          equipped: false,
+          notes: "Test notes",
+        },
+      ]);
 
       const result = await service.addItem("1", addItemDto, "user1");
 

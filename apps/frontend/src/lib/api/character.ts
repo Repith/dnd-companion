@@ -1,4 +1,5 @@
 import api from "./auth";
+import { withApiRetry } from "./error-handler";
 import {
   CreateCharacterDto,
   UpdateCharacterDto,
@@ -8,8 +9,10 @@ import {
 export const characterApi = {
   // Get all characters for the authenticated user
   getAll: async (): Promise<CharacterResponseDto[]> => {
-    const response = await api.get<CharacterResponseDto[]>("/characters");
-    return response.data;
+    return withApiRetry(async () => {
+      const response = await api.get<CharacterResponseDto[]>("/characters");
+      return response.data;
+    });
   },
 
   // Get a specific character by ID

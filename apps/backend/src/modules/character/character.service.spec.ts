@@ -1,6 +1,8 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { CharacterService } from "./character.service";
 import { PrismaService } from "../../common/prisma/prisma.service";
+import { EventBusService } from "../events/event-bus.service";
+import { InventoryService } from "../inventory/inventory.service";
 import { CreateCharacterDto, UpdateCharacterDto } from "./dto";
 import {
   BadRequestException,
@@ -26,6 +28,17 @@ describe("CharacterService", () => {
     campaign: {
       findUnique: jest.fn(),
     },
+    spell: {
+      findUnique: jest.fn(),
+    },
+  };
+
+  const mockEventBusService = {
+    publish: jest.fn(),
+  };
+
+  const mockInventoryService = {
+    createCharacterInventory: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -35,6 +48,14 @@ describe("CharacterService", () => {
         {
           provide: PrismaService,
           useValue: mockPrismaService,
+        },
+        {
+          provide: EventBusService,
+          useValue: mockEventBusService,
+        },
+        {
+          provide: InventoryService,
+          useValue: mockInventoryService,
         },
       ],
     }).compile();

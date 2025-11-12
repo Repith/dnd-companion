@@ -8,6 +8,7 @@ export interface User {
   lastLogin: string;
   createdAt: string;
   updatedAt: string;
+  isDemo?: boolean;
 }
 
 export interface LoginRequest {
@@ -31,8 +32,9 @@ export interface AuthResponse {
 export interface AuthContextType {
   user: User | null;
   login: (credentials: LoginRequest) => Promise<void>;
+  demoLogin: () => Promise<void>;
   register: (userData: RegisterRequest) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
   isLoading: boolean;
   error: string | null;
 }

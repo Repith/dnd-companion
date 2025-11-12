@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import ProtectedRoute from "@/components/ProtectedRoute";
 import CharacterBuilder from "@/components/CharacterBuilder";
 
 export default function CreateCharacterPage() {
@@ -11,10 +12,12 @@ export default function CreateCharacterPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-4xl px-4 py-6 mx-auto sm:px-6 lg:px-8">
-        <CharacterBuilder onComplete={handleCharacterCreated} />
+    <ProtectedRoute>
+      <div className="min-h-screen bg-gray-50">
+        <div className="max-w-4xl px-4 py-6 mx-auto sm:px-6 lg:px-8">
+          <CharacterBuilder onComplete={handleCharacterCreated} />
+        </div>
       </div>
-    </div>
+    </ProtectedRoute>
   );
 }

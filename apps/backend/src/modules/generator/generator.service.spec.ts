@@ -58,6 +58,16 @@ describe("GeneratorService", () => {
       };
 
       mockPrismaService.generatorRequest.create.mockResolvedValue(mockRequest);
+      // Mock the findUnique call in processGeneration
+      mockPrismaService.generatorRequest.findUnique.mockResolvedValue(
+        mockRequest,
+      );
+      mockPrismaService.generatedEntity.create.mockResolvedValue({
+        id: "entity-id",
+        entityType: GeneratorType.NPC,
+        data: {},
+        createdAt: new Date(),
+      });
 
       const result = await service.createRequest(createDto);
 
