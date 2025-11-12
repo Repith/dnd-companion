@@ -1,0 +1,48 @@
+import api from "./auth";
+import { EventQueryDto, EventsResponseDto, EventStatsDto } from "@/types/event";
+
+export const eventApi = {
+  // Get events with filtering and pagination
+  getEvents: async (query?: EventQueryDto): Promise<EventsResponseDto> => {
+    const response = await api.get<EventsResponseDto>("/events", {
+      params: query,
+    });
+    return response.data;
+  },
+
+  // Get event statistics
+  getStats: async (sessionId?: string): Promise<EventStatsDto> => {
+    const response = await api.get<EventStatsDto>("/events/stats", {
+      params: sessionId ? { sessionId } : undefined,
+    });
+    return response.data;
+  },
+
+  // Get events for a specific session
+  getSessionEvents: async (
+    sessionId: string,
+    query?: Omit<EventQueryDto, "sessionId">,
+  ): Promise<EventsResponseDto> => {
+    const response = await api.get<EventsResponseDto>(
+      `/events/session/${sessionId}`,
+      {
+        params: query,
+      },
+    );
+    return response.data;
+  },
+
+  // Get events for a specific character
+  getCharacterEvents: async (
+    characterId: string,
+    query?: Omit<EventQueryDto, "actorId" | "targetId">,
+  ): Promise<EventsResponseDto> => {
+    const response = await api.get<EventsResponseDto>(
+      `/events/character/${characterId}`,
+      {
+        params: query,
+      },
+    );
+    return response.data;
+  },
+};

@@ -1,4 +1,4 @@
-version: '3.9'
+version: "3.9"
 
 services:
   postgres:
@@ -11,48 +11,48 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dnd -d dnd_companion"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
-  zookeeper:
-    image: bitnami/zookeeper:3.8
-    environment:
-      ALLOW_ANONYMOUS_LOGIN: "yes"
-    ports:
-      - "2181:2181"
-
-  kafka:
-    image: bitnami/kafka:3.5
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
     depends_on:
-      - zookeeper
+      postgres:
+        condition: service_healthy
     environment:
-      KAFKA_BROKER_ID: 1
-      KAFKA_CFG_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_CFG_LISTENERS: PLAINTEXT://:9092
-      KAFKA_CFG_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
-      ALLOW_PLAINTEXT_LISTENER: "yes"
+      - DATABASE_URL=postgresql://dnd:dndpass@postgres:5432/dnd_companion
+      - PORT=3002
     ports:
-      - "9092:9092"
-
-  prometheus:
-    image: prom/prometheus:latest
+      - "3002:3002"
     volumes:
-      - ./prometheus.yml:/etc/prometheus/prometheus.yml
-    command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-    ports:
-      - "9090:9090"
+      - ./apps/backend:/app/apps/backend
+      - ./prisma:/app/prisma
+    command: sh -c "npx prisma generate && npx prisma migrate deploy && cd apps/backend && npm run dev"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3002/"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
 
-  grafana:
-    image: grafana/grafana:9.5.3
-    depends_on:
-      - prometheus
-    environment:
-      GF_SECURITY_ADMIN_USER: admin
-      GF_SECURITY_ADMIN_PASSWORD: admin
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
     ports:
       - "3000:3000"
     volumes:
-      - grafana_data:/var/lib/grafana
+      - ./apps/frontend:/app/apps/frontend
+    command: sh -c "cd apps/frontend && npm run dev"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
 
 volumes:
   postgres_data:
-  grafana_data:

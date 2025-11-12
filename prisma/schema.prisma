@@ -81,100 +81,379 @@ enum SkillName {
   SURVIVAL
 }
 
+enum Alignment {
+  LAWFUL_GOOD
+  NEUTRAL_GOOD
+  CHAOTIC_GOOD
+  LAWFUL_NEUTRAL
+  TRUE_NEUTRAL
+  CHAOTIC_NEUTRAL
+  LAWFUL_EVIL
+  NEUTRAL_EVIL
+  CHAOTIC_EVIL
+}
+
+enum ItemType {
+  WEAPON
+  ARMOR
+  TOOL
+  CONSUMABLE
+  MAGIC_ITEM
+  LOOT
+}
+
+enum Rarity {
+  COMMON
+  UNCOMMON
+  RARE
+  VERY_RARE
+  LEGENDARY
+}
+
+enum SpellSchool {
+  ABJURATION
+  CONJURATION
+  DIVINATION
+  ENCHANTMENT
+  EVOCATION
+  ILLUSION
+  NECROMANCY
+  TRANSMUTATION
+}
+
+enum LocationType {
+  CITY
+  DUNGEON
+  WILDERNESS
+  TOWN
+  VILLAGE
+  CASTLE
+  TEMPLE
+  SHOP
+}
+
+enum GeneratorType {
+  NPC
+  LOCATION
+  CAMPAIGN
+  ITEM
+  SPELL
+}
+
+enum GeneratorStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+}
+
+enum EventType {
+  DAMAGE_APPLIED
+  HEALING_RECEIVED
+  ITEM_GIVEN
+  SPELL_CAST
+  QUEST_UPDATED
+  LEVEL_UP
+  DEATH
+}
+
+enum QuestStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+}
+
+enum SubscriptionTier {
+  FREE
+  PREMIUM
+  ENTERPRISE
+}
+
+enum OwnerType {
+  CHARACTER
+  SESSION
+}
+
+enum NPCRole {
+  MERCHANT
+  ALLY
+  ENEMY
+  QUEST_GIVER
+  VILLAIN
+}
+
 model User {
-  id         Int       @id @default(autoincrement())
-  email      String    @unique
-  password   String
-  role       Role
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
-  characters Character[]
-  sessions   Session[]
+  id               String            @id @default(uuid()) @db.Uuid
+  username         String?           @unique
+  email            String            @unique
+  passwordHash     String
+  roles            Role[]
+  subscriptionTier SubscriptionTier? @default(FREE)
+  profile          Json?             // { displayName: string, avatarUrl: string, locale: string }
+  lastLogin        DateTime?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  characters       Character[]
+  campaignsAsDM    Campaign[]        @relation("DM")
+  campaignsAsPlayer Campaign[]       @relation("Player")
+}
+
+model Campaign {
+  id               String       @id @default(uuid()) @db.Uuid
+  name             String
+  description      String?
+  dm               User         @relation("DM", fields: [dmId], references: [id])
+  dmId             String       @db.Uuid
+  players          User[]       @relation("Player")
+  quests           Quest[]
+  sessions         Session[]
+  npcs             Character[]  @relation("NPCCampaigns")
+  locations        Location[]
+  activePlayers    Character[]  @relation("ActiveCampaign")
+  currentSession   Session?     @relation("CurrentSession")
+  currentSessionId String?      @db.Uuid
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+}
+
+model Location {
+  id          String       @id @default(uuid()) @db.Uuid
+  name        String
+  type        LocationType
+  description String?
+  mapUrl      String?
+  parent      Location?    @relation("Parent", fields: [parentId], references: [id])
+  parentId    String?      @db.Uuid
+  children    Location[]   @relation("Parent")
+  npcs        Character[]
+  quests      Quest[]
+  campaigns   Campaign[]
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+}
+
+model Multiclass {
+  id          String        @id @default(uuid()) @db.Uuid
+  character   Character     @relation(fields: [characterId], references: [id])
+  characterId String        @db.Uuid
+  class       CharacterClass
+  level       Int
+  @@unique([characterId, class])
+}
+
+model AbilityScores {
+  id            String     @id @default(uuid()) @db.Uuid
+  character     Character  @relation(fields: [characterId], references: [id])
+  characterId   String     @db.Uuid
+  strength      Int
+  dexterity     Int
+  constitution  Int
+  intelligence  Int
+  wisdom        Int
+  charisma      Int
+  @@unique([characterId])
+}
+
+model SkillProficiency {
+  id          String     @id @default(uuid()) @db.Uuid
+  character   Character  @relation(fields: [characterId], references: [id])
+  characterId String     @db.Uuid
+  skill       SkillName
+  proficient  Boolean    @default(false)
+  expertise   Boolean    @default(false)
+  @@unique([characterId, skill])
+}
+
+model Inventory {
+  id          String          @id @default(uuid()) @db.Uuid
+  ownerType   OwnerType
+  ownerId     String          @db.Uuid
+  items       InventoryItem[]
+  encumbrance Json?
+}
+
+model InventoryItem {
+  id          String    @id @default(uuid()) @db.Uuid
+  inventory   Inventory @relation(fields: [inventoryId], references: [id])
+  inventoryId String    @db.Uuid
+  item        Item      @relation(fields: [itemId], references: [id])
+  itemId      String    @db.Uuid
+  quantity    Int       @default(1)
+  equipped    Boolean   @default(false)
+  notes       String?
+}
+
+model GameEvent {
+  id         String     @id @default(uuid()) @db.Uuid
+  type       EventType
+  timestamp  DateTime   @default(now())
+  actor      Character? @relation("Actor", fields: [actorId], references: [id])
+  actorId    String?    @db.Uuid
+  target     Character? @relation("Target", fields: [targetId], references: [id])
+  targetId   String?    @db.Uuid
+  payload    Json?
+  session    Session    @relation(fields: [sessionId], references: [id])
+  sessionId  String     @db.Uuid
+}
+
+model Feature {
+  id          String      @id @default(uuid()) @db.Uuid
+  name        String
+  description String
+  source      String
+  level       Int?
+  characters  Character[]
+}
+
+model GeneratorRequest {
+  id         String         @id @default(uuid()) @db.Uuid
+  type       GeneratorType
+  tags       String[]
+  prompt     String?
+  status     GeneratorStatus @default(PENDING)
+  resultId   String?
+  createdAt  DateTime       @default(now())
+}
+
+model GeneratedEntity {
+  id          String     @id @default(uuid()) @db.Uuid
+  entityType  String
+  data        Json
+  createdAt   DateTime   @default(now())
+}
+
+model DMNote {
+  id         String     @id @default(uuid()) @db.Uuid
+  content    String
+  links      Link[]
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+}
+
+model Link {
+  id              String  @id @default(uuid()) @db.Uuid
+  note            DMNote  @relation(fields: [noteId], references: [id])
+  noteId          String  @db.Uuid
+  relatedEntityType String
+  relatedEntityId String  @db.Uuid
+  relationship    String
 }
 
 model Character {
-  id            Int             @id @default(autoincrement())
-  userId        Int
-  user          User            @relation(fields: [userId], references: [id])
-  name          String
-  class         CharacterClass
-  race          Race
-  level         Int             @default(1)
-  alignment     String?
-  experience    Int             @default(0)
-  maxHitPoints  Int             @default(0)
-  currentHitPoints Int          @default(0)
-  hitDice       String?         // e.g. "1d10"
-  speed         Int             @default(30)
-  proficiencyBonus Int          @default(2)
-  abilityScores Json            // e.g. { "STRENGTH": 15, "DEXTERITY": 14, ... }
-  skillProficiencies Json       // e.g. { "ACROBATICS": true, "HISTORY": false, ... }
-  passivePerception Int         @default(10)
-  inspiration   Boolean         @default(false)
-  inventory     Item[]
-  spells        Spell[]
-  quests        CharacterQuest[]
-  createdAt     DateTime        @default(now())
-  updatedAt     DateTime        @updatedAt
+  id                String             @id @default(uuid()) @db.Uuid
+  name              String
+  race              Race
+  subrace           String?
+  multiclasses      Multiclass[]
+  level             Int                @default(1)
+  background        String?
+  alignment         Alignment?
+  experiencePoints  Int                @default(0)
+  inspiration       Boolean            @default(false)
+  abilityScores     AbilityScores?
+  skillProficiencies SkillProficiency[]
+  savingThrows      Json?              // { "STRENGTH": true, ... }
+  proficiencyBonus  Int                @default(2)
+  hitDice           String?            // e.g. "1d10"
+  hitPoints         Json               // { max: 10, current: 10, temporary: 0 }
+  armorClass        Int                @default(10)
+  initiative        Int                @default(0)
+  speed             Int                @default(30)
+  spellcasting      Json?              // { class: "Wizard", saveDC: 13, attackBonus: 5, knownSpells: [...], preparedSpells: [...], slots: {1:4,2:3,...}, remainingSlots: {...} }
+  featuresTraits    String[]           // list of features
+  personalityTraits String?
+  ideals            String?
+  bonds             String?
+  flaws             String?
+  appearance        Json?              // { age: 25, height: "5'10\"", weight: 180, eyes: "blue", skin: "fair", hair: "brown" }
+  backstory         String?
+  languages         String[]           // list of languages
+  currency          Json               // { cp: 0, sp: 0, ep: 0, gp: 0, pp: 0 }
+  owner             User?              @relation(fields: [ownerId], references: [id])
+  ownerId           String?            @db.Uuid
+  activeCampaign    Campaign?          @relation("ActiveCampaign", fields: [campaignId], references: [id])
+  campaignId        String?            @db.Uuid
+  isNPC             Boolean            @default(false)
+  npcRole           NPCRole?
+  challengeRating   Float?
+  lootTable         Json?              // list of item ids
+  knownSpells       String[]           // spell ids
+  preparedSpells    String[]           // spell ids
+  quests            CharacterQuest[]
+  eventsAsActor     GameEvent[]        @relation("Actor")
+  eventsAsTarget    GameEvent[]        @relation("Target")
+  locations         Location[]
+  npcCampaigns      Campaign[]         @relation("NPCCampaigns")
+  features          Feature[]
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
 }
 
 model Item {
-  id             Int       @id @default(autoincrement())
-  characterId    Int
-  character      Character @relation(fields: [characterId], references: [id])
-  name           String
-  description    String?
-  weight         Float     @default(0)
-  value          Int       @default(0)
-  magical        Boolean   @default(false)
-  quantity       Int       @default(1)
-  // Additional metadata such as modifiers can be stored as JSON
-  properties     Json?
+  id          String     @id @default(uuid()) @db.Uuid
+  name        String
+  type        ItemType
+  rarity      Rarity     @default(COMMON)
+  weight      Float      @default(0)
+  properties  Json?      // damage dice, armor class bonus, etc.
+  effects     Json?      // modifiers to stats
+  source      String?
+  description String?
+  inventoryItems InventoryItem[]
 }
 
 model Spell {
-  id             Int       @id @default(autoincrement())
-  characterId    Int
-  character      Character @relation(fields: [characterId], references: [id])
+  id             String       @id @default(uuid()) @db.Uuid
   name           String
-  level          Int       @default(0)
-  school         String?
+  level          Int          @default(0)
+  school         SpellSchool?
   castingTime    String?
   range          String?
-  components     String?
-  duration       String?
+  components     Json?        // { verbal: true, somatic: true, material: "a diamond worth 100gp" }
+  duration       Json         // { duration: "1 minute", concentration: true }
+  classes        String[]     // list of class names
   description    String?
+  higherLevel    String?
 }
 
 model Quest {
-  id             Int       @id @default(autoincrement())
-  title          String
-  description    String
-  experience     Int       @default(0)
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
-  // Many‑to‑many relation with characters through CharacterQuest
-  participants    CharacterQuest[]
+  id               String     @id @default(uuid()) @db.Uuid
+  campaign         Campaign   @relation(fields: [campaignId], references: [id])
+  campaignId       String     @db.Uuid
+  name             String
+  summary          String?
+  description      String?
+  status           QuestStatus @default(NOT_STARTED)
+  experienceReward Int        @default(0)
+  loot             Json?      // list of item ids or something
+  npcIds           String[]   // list of character ids
+  locationIds      String[]   // list of location ids
+  notes            String?
+  participants     CharacterQuest[]
+  locations        Location[]
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
 }
 
 model CharacterQuest {
-  characterId Int
-  questId     Int
-  status      String       @default("IN_PROGRESS")
-  rewardClaimed Boolean    @default(false)
-  character   Character    @relation(fields: [characterId], references: [id])
-  quest       Quest        @relation(fields: [questId], references: [id])
+  characterId   String      @db.Uuid
+  questId       String      @db.Uuid
+  status        QuestStatus @default(IN_PROGRESS)
+  rewardClaimed Boolean     @default(false)
+  character     Character   @relation(fields: [characterId], references: [id])
+  quest         Quest       @relation(fields: [questId], references: [id])
   @@id([characterId, questId])
 }
 
 model Session {
-  id           Int       @id @default(autoincrement())
-  userId       Int
-  user         User      @relation(fields: [userId], references: [id])
-  title        String
-  description  String?
-  startedAt    DateTime  @default(now())
-  endedAt      DateTime?
-  // Example field to demonstrate event sourcing: log of events during the session
-  events       Json?
+  id                   String       @id @default(uuid()) @db.Uuid
+  campaign             Campaign     @relation(fields: [campaignId], references: [id])
+  campaignId           String       @db.Uuid
+  date                 DateTime     @default(now())
+  notes                String?
+  events               GameEvent[]
+  playerCharacterIds   String[]     // list of character ids
+  currentCampaign      Campaign?    @relation("CurrentSession", fields: [currentCampaignId], references: [id])
+  currentCampaignId    String?      @unique @db.Uuid
 }

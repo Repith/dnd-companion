@@ -1,0 +1,35 @@
+{
+  "name": "dnd-companion",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "apps/frontend",
+    "apps/backend"
+  ],
+  "scripts": {
+    "dev": "concurrently \"cd apps/backend && npm run dev\" \"cd apps/frontend && npm run dev\"",
+    "build": "cd apps/backend && npm run build && cd ../frontend && npm run build",
+    "test": "cd apps/backend && npm run test && cd ../frontend && npm run test",
+    "lint": "cd apps/backend && npm run lint && cd ../frontend && npm run lint",
+    "clean": "cd apps/backend && npm run clean && cd ../frontend && npm run clean",
+    "db:migrate": "prisma migrate dev",
+    "db:push": "prisma db push",
+    "db:seed": "prisma db seed",
+    "db:generate": "prisma generate",
+    "db:studio": "prisma studio",
+    "db:reset": "prisma migrate reset"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "npm": ">=10.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "concurrently": "^8.2.2",
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.19.0",
+    "prisma": "^6.19.0"
+  }
+}
