@@ -306,6 +306,25 @@ export interface DiceRoll {
   total: number;
 }
 
+export interface CreateDiceRollDto {
+  diceType: string;
+  numberOfDice: number;
+  individualResults: number[];
+  totalResult: number;
+  characterId?: string;
+}
+
+export interface DiceRollResponseDto {
+  id: string;
+  userId: string;
+  characterId?: string;
+  diceType: string;
+  numberOfDice: number;
+  individualResults: number[];
+  totalResult: number;
+  timestamp: Date;
+}
+
 export interface DeathSaves {
   successes: number;
   failures: number;

@@ -4,6 +4,8 @@ import { useRouter } from "next/navigation";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import CharacterBuilder from "@/components/CharacterBuilder";
 
+export const dynamic = "force-dynamic";
+
 export default function CreateCharacterPage() {
   const router = useRouter();
 

@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
-import { ThemeProvider } from "next-themes";
-import { AuthProvider } from "@/contexts/AuthContext";
+import { Providers } from "@/components/Providers";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -16,14 +15,11 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body>
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="system"
-          enableSystem
-          disableTransitionOnChange
-        >
-          <AuthProvider>{children}</AuthProvider>
-        </ThemeProvider>
+        <Providers>{children}</Providers>
+        <div
+          id="dice-box"
+          className="fixed inset-0 pointer-events-none z-60"
+        ></div>
       </body>
     </html>
   );

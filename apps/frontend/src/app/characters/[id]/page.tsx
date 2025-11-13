@@ -6,11 +6,12 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 import CharacterDashboard from "@/components/CharacterDashboard";
 import { CharacterResponseDto } from "@/types/character";
 import { characterApi } from "@/lib/api/character";
+import { useCharacter } from "@/contexts/CharacterContext";
 
 export default function CharacterPage() {
   const params = useParams();
   const router = useRouter();
-  const [character, setCharacter] = useState<CharacterResponseDto | null>(null);
+  const { selectedCharacter, setSelectedCharacter } = useCharacter();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -26,7 +27,7 @@ export default function CharacterPage() {
     try {
       setLoading(true);
       const data = await characterApi.getById(characterId);
-      setCharacter(data);
+      setSelectedCharacter(data);
     } catch (err) {
       setError("Failed to load character");
       console.error("Error loading character:", err);
@@ -36,7 +37,7 @@ export default function CharacterPage() {
   };
 
   const handleUpdate = async (updates: Partial<CharacterResponseDto>) => {
-    if (!character) return;
+    if (!selectedCharacter) return;
 
     try {
       // Transform the updates to match UpdateCharacterDto
@@ -54,10 +55,10 @@ export default function CharacterPage() {
       }
 
       const updatedCharacter = await characterApi.update(
-        character.id,
+        selectedCharacter.id,
         transformedUpdates,
       );
-      setCharacter(updatedCharacter);
+      setSelectedCharacter(updatedCharacter);
     } catch (err) {
       console.error("Error updating character:", err);
       alert("Failed to update character");
@@ -73,7 +74,7 @@ export default function CharacterPage() {
             <p className="text-gray-600">Loading character...</p>
           </div>
         </div>
-      ) : error || !character ? (
+      ) : error || !selectedCharacter ? (
         <div className="flex items-center justify-center min-h-screen bg-gray-50">
           <div className="text-center">
             <div className="mb-4 text-red-600">
@@ -98,7 +99,10 @@ export default function CharacterPage() {
                 ← Back to Characters
               </button>
             </div>
-            <CharacterDashboard character={character} onUpdate={handleUpdate} />
+            <CharacterDashboard
+              character={selectedCharacter}
+              onUpdate={handleUpdate}
+            />
           </div>
         </div>
       )}

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useCharacter } from "@/contexts/CharacterContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import Sidebar from "@/components/Sidebar";
 import ErrorBoundary from "@/components/ErrorBoundary";
@@ -24,8 +25,8 @@ import ProgressTracker from "@/components/ProgressTracker";
 import EventFeed from "@/components/EventFeed";
 import QuestForm from "@/components/QuestForm";
 import InventoryDisplay from "@/components/InventoryDisplay";
-import DiceRoller from "@/components/DiceRoller";
 import SessionLog from "@/components/SessionLog";
+import DMRollHistory from "@/components/DMRollHistory";
 
 type Module =
   | "characters"
@@ -43,10 +44,9 @@ type CampaignView = "list" | "view";
 export default function DashboardPage() {
   const { user, logout } = useAuth();
   const { theme, setTheme } = useTheme();
+  const { selectedCharacter, setSelectedCharacter } = useCharacter();
   const [activeModule, setActiveModule] = useState<Module>("characters");
   const [characterView, setCharacterView] = useState<CharacterView>("list");
-  const [selectedCharacter, setSelectedCharacter] =
-    useState<CharacterResponseDto | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [campaigns, setCampaigns] = useState<CampaignResponseDto[]>([]);
   const [selectedCampaignId, setSelectedCampaignId] = useState<string>("");
@@ -415,7 +415,8 @@ export default function DashboardPage() {
         }
       case "dice":
         if (selectedCharacter) {
-          return <DiceRoller character={selectedCharacter} />;
+          setActiveModule("characters"); // Switch back to characters - dice menu is always visible
+          return null;
         } else {
           return (
             <div className="flex items-center justify-center h-96">
@@ -464,6 +465,7 @@ export default function DashboardPage() {
                 <div className="space-y-6">
                   <LocationManager campaignId={selectedCampaignId} />
                   <DMNoteEditor campaignId={selectedCampaignId} />
+                  <DMRollHistory />
                 </div>
                 <div className="h-96">
                   <DMZoneGraph campaignId={selectedCampaignId} />

@@ -145,7 +145,7 @@ export class ApiErrorHandler {
       try {
         return await operation();
       } catch (error) {
-        lastError = this.parseError(error);
+        lastError = ApiErrorHandler.parseError(error);
 
         // Don't retry if this is the last attempt or error is not retryable
         if (attempt === maxRetries || !retryCondition(lastError)) {

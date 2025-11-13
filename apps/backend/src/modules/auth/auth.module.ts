@@ -5,6 +5,7 @@ import { AuthService } from "./auth.service";
 import { AuthController } from "./auth.controller";
 import { UserModule } from "../user/user.module";
 import { JwtStrategy } from "./strategies/jwt.strategy";
+import { JwtAuthGuard } from "./guards/jwt-auth.guard";
 import { RolesGuard } from "./guards/roles.guard";
 import { DemoSeederService } from "./demo-seeder.service";
 import { PrismaModule } from "../../common/prisma/prisma.module";
@@ -19,8 +20,14 @@ import { PrismaModule } from "../../common/prisma/prisma.module";
       signOptions: { expiresIn: "24h" },
     }),
   ],
-  providers: [AuthService, JwtStrategy, RolesGuard, DemoSeederService],
+  providers: [
+    AuthService,
+    JwtStrategy,
+    JwtAuthGuard,
+    RolesGuard,
+    DemoSeederService,
+  ],
   controllers: [AuthController],
-  exports: [AuthService, JwtStrategy, RolesGuard],
+  exports: [AuthService, JwtStrategy, JwtAuthGuard, RolesGuard],
 })
 export class AuthModule {}

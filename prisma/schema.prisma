@@ -197,6 +197,7 @@ model User {
   characters       Character[]
   campaignsAsDM    Campaign[]        @relation("DM")
   campaignsAsPlayer Campaign[]       @relation("Player")
+  diceRolls        DiceRoll[]
 }
 
 model Campaign {
@@ -386,6 +387,7 @@ model Character {
   locations         Location[]
   npcCampaigns      Campaign[]         @relation("NPCCampaigns")
   features          Feature[]
+  diceRolls         DiceRoll[]
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
 }
@@ -456,4 +458,17 @@ model Session {
   playerCharacterIds   String[]     // list of character ids
   currentCampaign      Campaign?    @relation("CurrentSession", fields: [currentCampaignId], references: [id])
   currentCampaignId    String?      @unique @db.Uuid
+}
+
+model DiceRoll {
+  id               String    @id @default(uuid()) @db.Uuid
+  user             User      @relation(fields: [userId], references: [id])
+  userId           String    @db.Uuid
+  character        Character? @relation(fields: [characterId], references: [id])
+  characterId      String?   @db.Uuid
+  diceType         String    // e.g., "1d20", "2d6"
+  numberOfDice     Int
+  individualResults Int[]    // array of individual die results
+  totalResult      Int
+  timestamp        DateTime  @default(now())
 }

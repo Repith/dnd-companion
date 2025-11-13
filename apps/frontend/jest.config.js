@@ -13,6 +13,9 @@ const customJestConfig = {
     "^@/(.*)$": "<rootDir>/src/$1",
   },
   testEnvironment: "jest-environment-jsdom",
+  transformIgnorePatterns: [
+    "node_modules/(?!(?:@3d-dice/dice-box|@3d-dice/dice-ui)/)",
+  ],
 };
 
 // createJestConfig is exported this way to ensure that next/jest can load the Next.js config which is async

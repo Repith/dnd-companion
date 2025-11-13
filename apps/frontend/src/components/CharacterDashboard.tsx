@@ -1,14 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import {
-  CharacterResponseDto,
-  AbilityName,
-  SkillName,
-} from "@/types/character";
+import { CharacterResponseDto, AbilityName } from "@/types/character";
 import { Spellbook } from "./Spellbook";
 import { SpellSlotTracker } from "./SpellSlotTracker";
 import { Features } from "./Features";
+import RollHistory from "./RollHistory";
+import { DiceRadialMenu } from "./DiceRadialMenu";
 
 interface CharacterDashboardProps {
   character: CharacterResponseDto;
@@ -20,7 +18,7 @@ export default function CharacterDashboard({
   onUpdate,
 }: CharacterDashboardProps) {
   const [activeTab, setActiveTab] = useState<
-    "overview" | "spells" | "features"
+    "overview" | "spells" | "features" | "rolls"
   >("overview");
 
   const level = character.level;
@@ -143,6 +141,16 @@ export default function CharacterDashboard({
             }`}
           >
             Features & Traits
+          </button>
+          <button
+            onClick={() => setActiveTab("rolls")}
+            className={`px-6 py-3 font-medium text-sm border-b-2 transition-colors ${
+              activeTab === "rolls"
+                ? "border-blue-500 text-blue-600 dark:border-blue-400 dark:text-blue-400"
+                : "border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+            }`}
+          >
+            Roll History
           </button>
         </div>
       </div>
@@ -480,6 +488,7 @@ export default function CharacterDashboard({
         </div>
       )}
 
+      <DiceRadialMenu characterId={character.id} />
       {/* Spells Tab */}
       {activeTab === "spells" && (
         <div className="space-y-6">
@@ -501,6 +510,9 @@ export default function CharacterDashboard({
           onCharacterUpdate={onUpdate || (() => {})}
         />
       )}
+
+      {/* Roll History Tab */}
+      {activeTab === "rolls" && <RollHistory characterId={character.id} />}
     </div>
   );
 }

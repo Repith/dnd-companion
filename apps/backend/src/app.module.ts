@@ -12,6 +12,7 @@ import { QuestModule } from "./modules/quest/quest.module";
 import { SessionModule } from "./modules/session/session.module";
 import { GeneratorModule } from "./modules/generator/generator.module";
 import { DMZoneModule } from "./modules/dm-zone/dm-zone.module";
+import { DiceRollModule } from "./modules/dice-roll/dice-roll.module";
 import { PrismaModule } from "./common/prisma/prisma.module";
 
 @Module({
@@ -33,6 +34,7 @@ import { PrismaModule } from "./common/prisma/prisma.module";
     SessionModule,
     GeneratorModule,
     DMZoneModule,
+    DiceRollModule,
   ],
 })
 export class AppModule {}

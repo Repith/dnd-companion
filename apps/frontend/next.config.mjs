@@ -4,11 +4,6 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
-  experimental: {
-    turbopack: {
-      root: "/app",
-    },
-  },
   env: {
     BACKEND_URL: process.env.BACKEND_URL || "http://localhost:3002",
   },
