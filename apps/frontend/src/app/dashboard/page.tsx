@@ -9,7 +9,6 @@ import ErrorBoundary from "@/components/ErrorBoundary";
 import { useTheme } from "next-themes";
 import CharacterList from "@/components/CharacterList";
 import CharacterBuilder from "@/components/CharacterBuilder";
-import CharacterDashboard from "@/components/CharacterDashboard";
 import { CharacterResponseDto } from "@/types/character";
 import DMNoteEditor from "@/components/DMNoteEditor";
 import DMZoneGraph from "@/components/DMZoneGraph";
@@ -27,6 +26,7 @@ import QuestForm from "@/components/QuestForm";
 import InventoryDisplay from "@/components/InventoryDisplay";
 import SessionLog from "@/components/SessionLog";
 import DMRollHistory from "@/components/DMRollHistory";
+import CharacterDashboard from "@/components/character-dashboard/CharacterDashboard";
 
 type Module =
   | "characters"

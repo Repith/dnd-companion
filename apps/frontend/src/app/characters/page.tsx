@@ -4,8 +4,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import CharacterList from "@/components/CharacterList";
-import CharacterDashboard from "@/components/CharacterDashboard";
 import { CharacterResponseDto } from "@/types/character";
+import CharacterDashboard from "@/components/character-dashboard/CharacterDashboard";
 
 export default function CharactersPage() {
   const [selectedCharacter, setSelectedCharacter] =

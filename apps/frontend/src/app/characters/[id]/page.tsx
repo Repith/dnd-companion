@@ -3,10 +3,10 @@
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import ProtectedRoute from "@/components/ProtectedRoute";
-import CharacterDashboard from "@/components/CharacterDashboard";
 import { CharacterResponseDto } from "@/types/character";
 import { characterApi } from "@/lib/api/character";
 import { useCharacter } from "@/contexts/CharacterContext";
+import CharacterDashboard from "@/components/character-dashboard/CharacterDashboard";
 
 export default function CharacterPage() {
   const params = useParams();
