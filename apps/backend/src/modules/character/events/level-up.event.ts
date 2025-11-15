@@ -6,6 +6,8 @@ export class LevelUpDomainEvent implements LevelUpEvent {
   actorId?: string;
   targetId?: string;
   sessionId?: string;
+  campaignId?: string;
+  global?: boolean;
   type: "LEVEL_UP";
   payload: {
     newLevel: number;
@@ -18,6 +20,8 @@ export class LevelUpDomainEvent implements LevelUpEvent {
     oldLevel: number,
     sessionId?: string,
     actorId?: string,
+    campaignId?: string,
+    global?: boolean,
   ) {
     this.targetId = targetId;
     this.type = "LEVEL_UP";
@@ -27,5 +31,7 @@ export class LevelUpDomainEvent implements LevelUpEvent {
     };
     if (sessionId !== undefined) this.sessionId = sessionId;
     if (actorId !== undefined) this.actorId = actorId;
+    if (campaignId !== undefined) this.campaignId = campaignId;
+    if (global !== undefined) this.global = global;
   }
 }

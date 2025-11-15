@@ -132,7 +132,7 @@ describe("InventoryService", () => {
   });
 
   describe("addItem", () => {
-    it("should add new item to inventory", async () => {
+    it("should add new item to inventory and publish ITEM_GIVEN event", async () => {
       const addItemDto: AddItemDto = {
         itemId: "item1",
         quantity: 2,
@@ -167,7 +167,7 @@ describe("InventoryService", () => {
       mockPrismaService.inventory.findUnique.mockResolvedValue(inventory);
       mockPrismaService.character.findUnique.mockResolvedValue({
         ownerId: "user1",
-        campaignId: null,
+        campaignId: "campaign-1",
       });
       mockPrismaService.campaign.findUnique.mockResolvedValue(null);
       mockPrismaService.item.findUnique.mockResolvedValue(item);
@@ -203,10 +203,19 @@ describe("InventoryService", () => {
           notes: "Test notes",
         },
       });
+      expect(mockEventBusService.publish).toHaveBeenCalledWith({
+        type: "ITEM_GIVEN",
+        targetId: "char1",
+        payload: {
+          itemId: "item1",
+          quantity: 2,
+        },
+        sessionId: "campaign-1",
+      });
       expect(result).toBeDefined();
     });
 
-    it("should update quantity for existing item", async () => {
+    it("should update quantity for existing item and publish ITEM_GIVEN event", async () => {
       const addItemDto: AddItemDto = {
         itemId: "item1",
         quantity: 2,
@@ -231,6 +240,10 @@ describe("InventoryService", () => {
       };
 
       mockPrismaService.inventory.findUnique.mockResolvedValue(inventory);
+      mockPrismaService.character.findUnique.mockResolvedValue({
+        ownerId: "user1",
+        campaignId: "campaign-1",
+      });
       mockPrismaService.item.findUnique.mockResolvedValue({
         id: "item1",
         name: "Longsword",
@@ -249,6 +262,15 @@ describe("InventoryService", () => {
           quantity: 3,
           notes: null,
         },
+      });
+      expect(mockEventBusService.publish).toHaveBeenCalledWith({
+        type: "ITEM_GIVEN",
+        targetId: "char1",
+        payload: {
+          itemId: "item1",
+          quantity: 2,
+        },
+        sessionId: "campaign-1",
       });
       expect(result).toBeDefined();
     });

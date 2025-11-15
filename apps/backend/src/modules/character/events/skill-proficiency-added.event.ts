@@ -8,6 +8,8 @@ export class SkillProficiencyAddedDomainEvent
   actorId?: string;
   targetId?: string;
   sessionId?: string;
+  campaignId?: string;
+  global?: boolean;
   type: "SKILL_PROFICIENCY_ADDED";
   payload: {
     skill: string;
@@ -22,6 +24,8 @@ export class SkillProficiencyAddedDomainEvent
     expertise: boolean,
     sessionId?: string,
     actorId?: string,
+    campaignId?: string,
+    global?: boolean,
   ) {
     this.targetId = targetId;
     this.type = "SKILL_PROFICIENCY_ADDED";
@@ -32,5 +36,7 @@ export class SkillProficiencyAddedDomainEvent
     };
     if (sessionId !== undefined) this.sessionId = sessionId;
     if (actorId !== undefined) this.actorId = actorId;
+    if (campaignId !== undefined) this.campaignId = campaignId;
+    if (global !== undefined) this.global = global;
   }
 }

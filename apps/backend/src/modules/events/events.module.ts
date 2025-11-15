@@ -11,6 +11,8 @@ import {
   QuestEventHandler,
   LevelUpEventHandler,
   DeathEventHandler,
+  GameEventExperienceGainedHandler,
+  GameEventQuestFinishedHandler,
   SkillProficiencyAddedEventHandler,
   QuestFinishedEventHandler,
   ExperienceGainedEventHandler,
@@ -30,6 +32,8 @@ import {
     QuestEventHandler,
     LevelUpEventHandler,
     DeathEventHandler,
+    GameEventExperienceGainedHandler,
+    GameEventQuestFinishedHandler,
     // CQRS domain event handlers
     SkillProficiencyAddedEventHandler,
     QuestFinishedEventHandler,

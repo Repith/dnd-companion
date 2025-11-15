@@ -1,8 +1,20 @@
-import { EventType as EventTypeConst } from "@prisma/client";
-import type { EventType as EventTypeType } from "@prisma/client";
-
-export const EventType = EventTypeConst;
-export type EventType = EventTypeType;
+/**
+ * Standardized event types for DnD Companion
+ * Shared between backend and frontend
+ */
+export enum EventType {
+  DAMAGE_APPLIED = "DAMAGE_APPLIED",
+  HEALING_RECEIVED = "HEALING_RECEIVED",
+  ITEM_GIVEN = "ITEM_GIVEN",
+  SPELL_CAST = "SPELL_CAST",
+  QUEST_UPDATED = "QUEST_UPDATED",
+  QUEST_FINISHED = "QUEST_FINISHED",
+  LEVEL_UP = "LEVEL_UP",
+  DEATH = "DEATH",
+  SKILL_PROFICIENCY_ADDED = "SKILL_PROFICIENCY_ADDED",
+  EXPERIENCE_GAINED = "EXPERIENCE_GAINED",
+  DICE_ROLL = "DICE_ROLL",
+}
 
 /**
  * Base event interface
@@ -15,7 +27,6 @@ export interface BaseEvent {
   targetId?: string | undefined;
   sessionId?: string;
   campaignId?: string;
-  global?: boolean;
   payload?: Record<string, any>;
 }
 
@@ -23,7 +34,7 @@ export interface BaseEvent {
  * Damage applied event
  */
 export interface DamageAppliedEvent extends BaseEvent {
-  type: "DAMAGE_APPLIED";
+  type: EventType.DAMAGE_APPLIED;
   payload: {
     damage: number;
     damageType: string;
@@ -35,7 +46,7 @@ export interface DamageAppliedEvent extends BaseEvent {
  * Healing received event
  */
 export interface HealingReceivedEvent extends BaseEvent {
-  type: "HEALING_RECEIVED";
+  type: EventType.HEALING_RECEIVED;
   payload: {
     healing: number;
     source?: string;
@@ -46,7 +57,7 @@ export interface HealingReceivedEvent extends BaseEvent {
  * Item given event
  */
 export interface ItemGivenEvent extends BaseEvent {
-  type: "ITEM_GIVEN";
+  type: EventType.ITEM_GIVEN;
   payload: {
     itemId: string;
     quantity: number;
@@ -59,7 +70,7 @@ export interface ItemGivenEvent extends BaseEvent {
  * Spell cast event
  */
 export interface SpellCastEvent extends BaseEvent {
-  type: "SPELL_CAST";
+  type: EventType.SPELL_CAST;
   payload: {
     spellId: string;
     spellLevel?: number;
@@ -71,7 +82,7 @@ export interface SpellCastEvent extends BaseEvent {
  * Quest updated event
  */
 export interface QuestUpdatedEvent extends BaseEvent {
-  type: "QUEST_UPDATED";
+  type: EventType.QUEST_UPDATED;
   payload: {
     questId: string;
     oldStatus?: string;
@@ -84,7 +95,7 @@ export interface QuestUpdatedEvent extends BaseEvent {
  * Quest finished event
  */
 export interface QuestFinishedEvent extends BaseEvent {
-  type: "QUEST_FINISHED";
+  type: EventType.QUEST_FINISHED;
   payload: {
     questId: string;
     experienceReward: number;
@@ -96,7 +107,7 @@ export interface QuestFinishedEvent extends BaseEvent {
  * Level up event
  */
 export interface LevelUpEvent extends BaseEvent {
-  type: "LEVEL_UP";
+  type: EventType.LEVEL_UP;
   payload: {
     newLevel: number;
     oldLevel: number;
@@ -107,7 +118,7 @@ export interface LevelUpEvent extends BaseEvent {
  * Death event
  */
 export interface DeathEvent extends BaseEvent {
-  type: "DEATH";
+  type: EventType.DEATH;
   payload: {
     cause?: string;
   };
@@ -117,7 +128,7 @@ export interface DeathEvent extends BaseEvent {
  * Skill proficiency added event
  */
 export interface SkillProficiencyAddedEvent extends BaseEvent {
-  type: "SKILL_PROFICIENCY_ADDED";
+  type: EventType.SKILL_PROFICIENCY_ADDED;
   payload: {
     skill: string;
     proficient: boolean;
@@ -129,7 +140,7 @@ export interface SkillProficiencyAddedEvent extends BaseEvent {
  * Experience gained event
  */
 export interface ExperienceGainedEvent extends BaseEvent {
-  type: "EXPERIENCE_GAINED";
+  type: EventType.EXPERIENCE_GAINED;
   payload: {
     experienceGained: number;
     totalExperience: number;
@@ -140,7 +151,7 @@ export interface ExperienceGainedEvent extends BaseEvent {
  * Dice roll event
  */
 export interface RollEvent extends BaseEvent {
-  type: "DICE_ROLL";
+  type: EventType.DICE_ROLL;
   payload: {
     notation: string;
     result: number;
@@ -182,5 +193,4 @@ export interface EventFilter {
   targetId?: string;
   sessionId?: string;
   campaignId?: string;
-  global?: boolean;
 }

@@ -65,18 +65,24 @@ export default function EventFeed({
 
   const getEventIcon = (type: string) => {
     switch (type) {
-      case "QUEST_STARTED":
-      case "QUEST_COMPLETED":
+      case "QUEST_UPDATED":
+      case "QUEST_FINISHED":
         return "🎯";
-      case "COMBAT_STARTED":
-      case "COMBAT_ENDED":
-        return "⚔️";
-      case "ITEM_GRANTED":
-        return "🎁";
-      case "HP_CHANGED":
+      case "DAMAGE_APPLIED":
+      case "HEALING_RECEIVED":
         return "❤️";
+      case "ITEM_GIVEN":
+        return "🎁";
       case "SPELL_CAST":
         return "✨";
+      case "LEVEL_UP":
+        return "⬆️";
+      case "DEATH":
+        return "💀";
+      case "EXPERIENCE_GAINED":
+        return "⭐";
+      case "DICE_ROLL":
+        return "🎲";
       default:
         return "📝";
     }
@@ -86,28 +92,38 @@ export default function EventFeed({
     const { type, payload } = event;
 
     switch (type) {
-      case "QUEST_STARTED":
-        return `Quest "${payload?.questName || "Unknown"}" started`;
-      case "QUEST_COMPLETED":
-        return `Quest "${payload?.questName || "Unknown"}" completed`;
-      case "COMBAT_STARTED":
-        return "Combat encounter began";
-      case "COMBAT_ENDED":
-        return `Combat ended - ${payload?.result || "Unknown result"}`;
-      case "ITEM_GRANTED":
-        return `${payload?.characterName || "Character"} received ${
-          payload?.itemName || "an item"
+      case "QUEST_UPDATED":
+        return `Quest status changed to ${payload?.newStatus || "Unknown"}`;
+      case "QUEST_FINISHED":
+        return `Quest completed - ${payload?.experienceReward || 0} XP awarded`;
+      case "DAMAGE_APPLIED":
+        return `Took ${payload?.damage || 0} ${
+          payload?.damageType || "damage"
         }`;
-      case "HP_CHANGED":
-        const change = payload?.change || 0;
-        const action = change > 0 ? "gained" : "lost";
-        return `${payload?.characterName || "Character"} ${action} ${Math.abs(
-          change,
-        )} HP`;
+      case "HEALING_RECEIVED":
+        return `Healed for ${payload?.healing || 0} HP`;
+      case "ITEM_GIVEN":
+        return `Received ${payload?.quantity || 1} item(s)`;
       case "SPELL_CAST":
-        return `${payload?.characterName || "Character"} cast ${
-          payload?.spellName || "a spell"
+        return `Cast a spell${
+          payload?.spellLevel ? ` (Level ${payload.spellLevel})` : ""
         }`;
+      case "LEVEL_UP":
+        return `Leveled up from ${payload?.oldLevel || "?"} to ${
+          payload?.newLevel || "?"
+        }`;
+      case "DEATH":
+        return `Died${payload?.cause ? ` (${payload.cause})` : ""}`;
+      case "EXPERIENCE_GAINED":
+        return `Gained ${payload?.experienceGained || 0} XP (Total: ${
+          payload?.totalExperience || 0
+        })`;
+      case "DICE_ROLL":
+        return `Rolled ${payload?.notation || "dice"}: ${payload?.result || 0}${
+          payload?.label ? ` (${payload.label})` : ""
+        }`;
+      case "SKILL_PROFICIENCY_ADDED":
+        return `Gained proficiency in ${payload?.skill || "unknown skill"}`;
       default:
         return type.replace(/_/g, " ").toLowerCase();
     }

@@ -12,7 +12,12 @@ import {
   QuestStatus,
 } from "./dto";
 import { CampaignService } from "../campaign/campaign.service";
-import { EventType, QuestUpdatedEvent } from "../events/dto";
+import {
+  EventType,
+  QuestUpdatedEvent,
+  ExperienceGainedEvent,
+  QuestFinishedEvent,
+} from "../events/dto";
 
 @Injectable()
 export class QuestService {
@@ -122,6 +127,7 @@ export class QuestService {
     if (updateDto.status && updateDto.status !== quest.status) {
       const questEvent: QuestUpdatedEvent = {
         type: EventType.QUEST_UPDATED,
+        actorId: userId,
         payload: {
           questId: id,
           oldStatus: quest.status,
@@ -248,6 +254,16 @@ export class QuestService {
     );
 
     for (const participant of completedParticipants) {
+      // Get current experience before update
+      const character = await this.prisma.character.findUnique({
+        where: { id: participant.characterId },
+        select: { experiencePoints: true },
+      });
+
+      if (!character) continue;
+
+      const oldExperience = character.experiencePoints;
+
       await this.prisma.character.update({
         where: { id: participant.characterId },
         data: {
@@ -266,6 +282,34 @@ export class QuestService {
         },
         data: { rewardClaimed: true },
       });
+
+      // Publish experience gained event
+      const experienceEvent: ExperienceGainedEvent = {
+        type: EventType.EXPERIENCE_GAINED,
+        actorId: userId,
+        targetId: participant.characterId,
+        payload: {
+          experienceGained: quest.experienceReward,
+          totalExperience: oldExperience + quest.experienceReward,
+        },
+        sessionId: quest.campaignId,
+      };
+      await this.eventBus.publish(experienceEvent);
+    }
+
+    // Publish quest finished event if there were rewards awarded
+    if (completedParticipants.length > 0) {
+      const questFinishedEvent: QuestFinishedEvent = {
+        type: EventType.QUEST_FINISHED,
+        actorId: userId,
+        payload: {
+          questId,
+          experienceReward: quest.experienceReward,
+          loot: [], // Could be enhanced to include actual loot
+        },
+        sessionId: quest.campaignId,
+      };
+      await this.eventBus.publish(questFinishedEvent);
     }
   }
 }

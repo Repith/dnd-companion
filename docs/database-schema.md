@@ -206,7 +206,7 @@ CREATE TABLE "Session" (
 
 ### GameEvent
 
-Records events that occur during gameplay for audit and replay purposes.
+Records events that occur during gameplay for audit, replay, and real-time streaming purposes. Events can be scoped at session, campaign, or global levels.
 
 ```sql
 CREATE TABLE "GameEvent" (
@@ -216,7 +216,9 @@ CREATE TABLE "GameEvent" (
   "actorId" UUID,
   "targetId" UUID,
   "payload" JSONB,
-  "sessionId" UUID NOT NULL
+  "sessionId" UUID,  -- Optional: used only for session-specific events
+  "campaignId" UUID, -- Optional: campaign context for event scoping
+  "global" BOOLEAN DEFAULT false  -- Indicates globally visible events
 );
 ```
 
@@ -415,7 +417,7 @@ CREATE TYPE "GeneratorType" AS ENUM ('NPC', 'LOCATION', 'CAMPAIGN', 'ITEM', 'SPE
 CREATE TYPE "GeneratorStatus" AS ENUM ('PENDING', 'IN_PROGRESS', 'COMPLETED', 'FAILED');
 
 -- Event types
-CREATE TYPE "EventType" AS ENUM ('DAMAGE_APPLIED', 'HEALING_RECEIVED', 'ITEM_GIVEN', 'SPELL_CAST', 'QUEST_UPDATED', 'LEVEL_UP', 'DEATH');
+CREATE TYPE "EventType" AS ENUM ('DAMAGE_APPLIED', 'HEALING_RECEIVED', 'ITEM_GIVEN', 'SPELL_CAST', 'QUEST_UPDATED', 'QUEST_FINISHED', 'LEVEL_UP', 'DEATH', 'SKILL_PROFICIENCY_ADDED', 'EXPERIENCE_GAINED', 'DICE_ROLL');
 
 -- Quest statuses
 CREATE TYPE "QuestStatus" AS ENUM ('NOT_STARTED', 'IN_PROGRESS', 'COMPLETED', 'FAILED');
@@ -442,6 +444,8 @@ CREATE INDEX "Campaign_dmId_idx" ON "Campaign"("dmId");
 CREATE INDEX "Quest_campaignId_idx" ON "Quest"("campaignId");
 CREATE INDEX "Session_campaignId_idx" ON "Session"("campaignId");
 CREATE INDEX "GameEvent_sessionId_idx" ON "GameEvent"("sessionId");
+CREATE INDEX "GameEvent_campaignId_idx" ON "GameEvent"("campaignId");
+CREATE INDEX "GameEvent_global_idx" ON "GameEvent"("global");
 CREATE INDEX "GameEvent_timestamp_idx" ON "GameEvent"("timestamp");
 CREATE INDEX "InventoryItem_inventoryId_idx" ON "InventoryItem"("inventoryId");
 CREATE INDEX "Item_type_idx" ON "Item"("type");
@@ -490,6 +494,7 @@ ALTER TABLE "Session" ADD CONSTRAINT "Session_currentCampaignId_fkey" FOREIGN KE
 ALTER TABLE "GameEvent" ADD CONSTRAINT "GameEvent_actorId_fkey" FOREIGN KEY ("actorId") REFERENCES "Character"("id") ON DELETE SET NULL;
 ALTER TABLE "GameEvent" ADD CONSTRAINT "GameEvent_targetId_fkey" FOREIGN KEY ("targetId") REFERENCES "Character"("id") ON DELETE SET NULL;
 ALTER TABLE "GameEvent" ADD CONSTRAINT "GameEvent_sessionId_fkey" FOREIGN KEY ("sessionId") REFERENCES "Session"("id") ON DELETE CASCADE;
+ALTER TABLE "GameEvent" ADD CONSTRAINT "GameEvent_campaignId_fkey" FOREIGN KEY ("campaignId") REFERENCES "Campaign"("id") ON DELETE SET NULL;
 
 -- Inventory relationships
 ALTER TABLE "InventoryItem" ADD CONSTRAINT "InventoryItem_inventoryId_fkey" FOREIGN KEY ("inventoryId") REFERENCES "Inventory"("id") ON DELETE CASCADE;
@@ -501,6 +506,59 @@ ALTER TABLE "Location" ADD CONSTRAINT "Location_parentId_fkey" FOREIGN KEY ("par
 -- DM note links
 ALTER TABLE "Link" ADD CONSTRAINT "Link_noteId_fkey" FOREIGN KEY ("noteId") REFERENCES "DMNote"("id") ON DELETE CASCADE;
 ```
+
+## Example Queries
+
+### Filtering Events by Scope
+
+```sql
+-- Get all session-specific events
+SELECT * FROM "GameEvent"
+WHERE "sessionId" IS NOT NULL
+ORDER BY "timestamp" DESC;
+
+-- Get campaign-level events
+SELECT * FROM "GameEvent"
+WHERE "campaignId" = 'campaign-uuid' AND "sessionId" IS NULL
+ORDER BY "timestamp" DESC;
+
+-- Get global events
+SELECT * FROM "GameEvent"
+WHERE "global" = true
+ORDER BY "timestamp" DESC;
+
+-- Get events for a specific character across all scopes
+SELECT * FROM "GameEvent"
+WHERE "actorId" = 'character-uuid' OR "targetId" = 'character-uuid'
+ORDER BY "timestamp" DESC;
+```
+
+### Event Aggregation
+
+```sql
+-- Count events by type for a campaign
+SELECT "type", COUNT(*) as count
+FROM "GameEvent"
+WHERE "campaignId" = 'campaign-uuid'
+GROUP BY "type"
+ORDER BY count DESC;
+
+-- Get recent events for real-time dashboard
+SELECT * FROM "GameEvent"
+WHERE "timestamp" > NOW() - INTERVAL '1 hour'
+ORDER BY "timestamp" DESC
+LIMIT 50;
+```
+
+## Real-time Streaming Endpoints
+
+The application provides Server-Sent Events (SSE) endpoints for real-time event streaming:
+
+- `GET /events/session/:sessionId/stream` - Streams events for a specific session
+- `GET /events/character/:characterId/stream` - Streams events where the character is the target
+- `GET /events/campaign/:campaignId/stream` - Streams all events for a campaign
+
+These endpoints use the EventBus to provide live updates to connected clients, enabling real-time dashboards and notifications.
 
 ## Data Migration Strategy
 

@@ -177,26 +177,21 @@ export class InventoryService {
       where: { id: inventoryId },
     });
 
-    // Determine sessionId for the event
-    let sessionId: string;
+    // Determine campaignId for the event (used as sessionId)
+    let campaignId: string;
     if (inventory!.ownerType === "SESSION") {
-      sessionId = inventory!.ownerId;
+      const session = await this.prisma.session.findUnique({
+        where: { id: inventory!.ownerId },
+        select: { campaignId: true },
+      });
+      campaignId = session!.campaignId;
     } else {
-      // For character inventories, find the character's campaign and use current session
+      // For character inventories, find the character's campaign
       const character = await this.prisma.character.findUnique({
         where: { id: inventory!.ownerId },
         select: { campaignId: true },
       });
-      if (character?.campaignId) {
-        const campaign = await this.prisma.campaign.findUnique({
-          where: { id: character.campaignId },
-          select: { currentSessionId: true, id: true },
-        });
-        sessionId = campaign?.currentSessionId || campaign!.id;
-      } else {
-        // Fallback to a default session or campaign id if no campaign
-        sessionId = inventory!.ownerId; // Use character id as fallback
-      }
+      campaignId = character!.campaignId!;
     }
 
     // Publish item given event
@@ -207,7 +202,7 @@ export class InventoryService {
         itemId: addItemDto.itemId,
         quantity: quantity,
       },
-      sessionId,
+      sessionId: campaignId,
     };
     await this.eventBus.publish(itemEvent);
 

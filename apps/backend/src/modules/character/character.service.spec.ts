@@ -254,7 +254,7 @@ describe("CharacterService", () => {
 
       const dtoWithOwner = { ...createDto, ownerId: "invalid-user" };
 
-      await expect(service.create(dtoWithOwner)).rejects.toThrow(
+      await expect(service.create(dtoWithOwner, "user-id")).rejects.toThrow(
         NotFoundException,
       );
     });
@@ -264,7 +264,7 @@ describe("CharacterService", () => {
 
       const dtoWithCampaign = { ...createDto, campaignId: "invalid-campaign" };
 
-      await expect(service.create(dtoWithCampaign)).rejects.toThrow(
+      await expect(service.create(dtoWithCampaign, "user-id")).rejects.toThrow(
         NotFoundException,
       );
     });
@@ -360,6 +360,190 @@ describe("CharacterService", () => {
 
       expect(mockPrismaService.character.update).toHaveBeenCalled();
       expect(result.name).toBe("Updated Name");
+    });
+
+    it("should publish DAMAGE_APPLIED event when HP decreases", async () => {
+      const hpUpdateDto: UpdateCharacterDto = {
+        hitPoints: { current: 5, max: 20, temporary: 0 },
+      };
+
+      const mockCharacter = {
+        id: "1",
+        name: "Test Character",
+        ownerId: "user-id",
+        hitPoints: { current: 15, max: 20, temporary: 0 },
+        campaignId: "campaign-1",
+      };
+
+      mockPrismaService.character.findUnique.mockResolvedValue(
+        mockCharacter as any,
+      );
+      mockPrismaService.character.update.mockResolvedValue({
+        ...mockCharacter,
+        hitPoints: hpUpdateDto.hitPoints,
+      } as any);
+
+      await service.update("1", hpUpdateDto, "user-id");
+
+      expect(mockEventBusService.publish).toHaveBeenCalledWith({
+        type: "DAMAGE_APPLIED",
+        targetId: "1",
+        payload: {
+          damage: 10,
+          damageType: "unknown",
+        },
+        sessionId: "campaign-1",
+        actorId: "user-id",
+      });
+    });
+
+    it("should publish HEALING_RECEIVED event when HP increases", async () => {
+      const hpUpdateDto: UpdateCharacterDto = {
+        hitPoints: { current: 18, max: 20, temporary: 0 },
+      };
+
+      const mockCharacter = {
+        id: "1",
+        name: "Test Character",
+        ownerId: "user-id",
+        hitPoints: { current: 15, max: 20, temporary: 0 },
+        campaignId: "campaign-1",
+      };
+
+      mockPrismaService.character.findUnique.mockResolvedValue(
+        mockCharacter as any,
+      );
+      mockPrismaService.character.update.mockResolvedValue({
+        ...mockCharacter,
+        hitPoints: hpUpdateDto.hitPoints,
+      } as any);
+
+      await service.update("1", hpUpdateDto, "user-id");
+
+      expect(mockEventBusService.publish).toHaveBeenCalledWith({
+        type: "HEALING_RECEIVED",
+        targetId: "1",
+        payload: {
+          healing: 3,
+        },
+        sessionId: "campaign-1",
+        actorId: "user-id",
+      });
+    });
+
+    it("should publish DEATH event when HP reaches zero", async () => {
+      const hpUpdateDto: UpdateCharacterDto = {
+        hitPoints: { current: 0, max: 20, temporary: 0 },
+      };
+
+      const mockCharacter = {
+        id: "1",
+        name: "Test Character",
+        ownerId: "user-id",
+        hitPoints: { current: 10, max: 20, temporary: 0 },
+        campaignId: "campaign-1",
+      };
+
+      mockPrismaService.character.findUnique.mockResolvedValue(
+        mockCharacter as any,
+      );
+      mockPrismaService.character.update.mockResolvedValue({
+        ...mockCharacter,
+        hitPoints: hpUpdateDto.hitPoints,
+      } as any);
+
+      await service.update("1", hpUpdateDto, "user-id");
+
+      expect(mockEventBusService.publish).toHaveBeenCalledWith({
+        type: "DAMAGE_APPLIED",
+        targetId: "1",
+        payload: {
+          damage: 10,
+          damageType: "unknown",
+        },
+        sessionId: "campaign-1",
+        actorId: "user-id",
+      });
+
+      expect(mockEventBusService.publish).toHaveBeenCalledWith({
+        type: "DEATH",
+        targetId: "1",
+        payload: {
+          cause: "damage",
+        },
+        sessionId: "campaign-1",
+        actorId: "user-id",
+      });
+    });
+
+    it("should publish LEVEL_UP event when level increases", async () => {
+      const levelUpdateDto: UpdateCharacterDto = {
+        level: 3,
+      };
+
+      const mockCharacter = {
+        id: "1",
+        name: "Test Character",
+        ownerId: "user-id",
+        level: 2,
+        campaignId: "campaign-1",
+      };
+
+      mockPrismaService.character.findUnique.mockResolvedValue(
+        mockCharacter as any,
+      );
+      mockPrismaService.character.update.mockResolvedValue({
+        ...mockCharacter,
+        level: 3,
+      } as any);
+
+      await service.update("1", levelUpdateDto, "user-id");
+
+      expect(mockEventBusService.publish).toHaveBeenCalledWith({
+        type: "LEVEL_UP",
+        targetId: "1",
+        payload: {
+          newLevel: 3,
+          oldLevel: 2,
+        },
+        sessionId: "campaign-1",
+        actorId: "user-id",
+      });
+    });
+
+    it("should publish EXPERIENCE_GAINED event when experience increases", async () => {
+      const expUpdateDto: UpdateCharacterDto = {
+        experiencePoints: 1500,
+      };
+
+      const mockCharacter = {
+        id: "1",
+        name: "Test Character",
+        ownerId: "user-id",
+        experiencePoints: 1000,
+        campaignId: "campaign-1",
+      };
+
+      mockPrismaService.character.findUnique.mockResolvedValue(
+        mockCharacter as any,
+      );
+      mockPrismaService.character.update.mockResolvedValue({
+        ...mockCharacter,
+        experiencePoints: 1500,
+      } as any);
+
+      await service.update("1", expUpdateDto, "user-id");
+
+      expect(mockEventBusService.publish).toHaveBeenCalledWith({
+        type: "EXPERIENCE_GAINED",
+        targetId: "1",
+        payload: {
+          experienceGained: 500,
+          totalExperience: 1500,
+        },
+        sessionId: "campaign-1",
+        actorId: "user-id",
+      });
     });
 
     it("should throw NotFoundException if character does not exist", async () => {

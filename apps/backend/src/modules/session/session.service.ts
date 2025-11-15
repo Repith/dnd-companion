@@ -11,7 +11,13 @@ import {
   EventResponseDto,
 } from "./dto";
 import { CampaignService } from "../campaign/campaign.service";
-import { EventType } from "../campaign/dto/types";
+import { EventBusService } from "../events/event-bus.service";
+import {
+  EventType,
+  DamageAppliedEvent,
+  HealingReceivedEvent,
+  ItemGivenEvent,
+} from "../events/dto";
 import { Session } from "@prisma/client";
 
 @Injectable()
@@ -19,6 +25,7 @@ export class SessionService {
   constructor(
     private prisma: PrismaService,
     private campaignService: CampaignService,
+    private eventBus: EventBusService,
   ) {}
 
   async create(
@@ -175,14 +182,30 @@ export class SessionService {
       throw new ForbiddenException("You are not part of this campaign");
     }
 
-    const event = await this.prisma.gameEvent.create({
-      data: {
-        ...eventDto,
+    // Publish event to EventBus
+    const gameEvent: any = {
+      type: eventDto.type,
+      actorId: eventDto.actorId,
+      targetId: eventDto.targetId,
+      sessionId,
+      payload: eventDto.payload,
+    };
+    await this.eventBus.publish(gameEvent);
+
+    // Retrieve the created event from database (created by EventLoggingService)
+    const event = await this.prisma.gameEvent.findFirst({
+      where: {
+        type: eventDto.type,
+        actorId: eventDto.actorId || null,
+        targetId: eventDto.targetId || null,
+        sessionId,
       },
+      orderBy: { timestamp: "desc" },
     });
 
-    // Publish event to event bus (simplified - in real implementation would use a message broker)
-    await this.publishEvent(event);
+    if (!event) {
+      throw new Error("Event was not logged to database");
+    }
 
     return new EventResponseDto(event);
   }
@@ -290,24 +313,50 @@ export class SessionService {
       },
     });
 
-    // Log the event
+    // Publish event via EventBus
+    if (hpAdjustment > 0) {
+      const healingEvent: HealingReceivedEvent = {
+        type: EventType.HEALING_RECEIVED,
+        actorId: userId,
+        targetId: characterId,
+        sessionId,
+        payload: {
+          healing: Math.abs(hpAdjustment),
+          source: "session_adjustment",
+        },
+      };
+      await this.eventBus.publish(healingEvent);
+    } else {
+      const damageEvent: DamageAppliedEvent = {
+        type: EventType.DAMAGE_APPLIED,
+        actorId: userId,
+        targetId: characterId,
+        sessionId,
+        payload: {
+          damage: Math.abs(hpAdjustment),
+          damageType: "session_adjustment",
+          source: "session_adjustment",
+        },
+      };
+      await this.eventBus.publish(damageEvent);
+    }
+
+    // Retrieve the created event from database (created by EventLoggingService)
     const eventType =
       hpAdjustment > 0 ? EventType.HEALING_RECEIVED : EventType.DAMAGE_APPLIED;
-    const event = await this.prisma.gameEvent.create({
-      data: {
+    const event = await this.prisma.gameEvent.findFirst({
+      where: {
         type: eventType,
         actorId: userId,
         targetId: characterId,
-        payload: {
-          amount: Math.abs(hpAdjustment),
-          newCurrentHP,
-          newTemporaryHP,
-        },
         sessionId,
       },
+      orderBy: { timestamp: "desc" },
     });
 
-    await this.publishEvent(event);
+    if (!event) {
+      throw new Error("Event was not logged to database");
+    }
 
     return new EventResponseDto(event);
   }
@@ -398,31 +447,34 @@ export class SessionService {
       });
     }
 
-    // Log the event
-    const event = await this.prisma.gameEvent.create({
-      data: {
+    // Publish event via EventBus
+    const itemEvent: ItemGivenEvent = {
+      type: EventType.ITEM_GIVEN,
+      actorId: userId,
+      targetId: characterId,
+      sessionId,
+      payload: {
+        itemId,
+        quantity,
+      },
+    };
+    await this.eventBus.publish(itemEvent);
+
+    // Retrieve the created event from database (created by EventLoggingService)
+    const event = await this.prisma.gameEvent.findFirst({
+      where: {
         type: EventType.ITEM_GIVEN,
         actorId: userId,
         targetId: characterId,
-        payload: {
-          itemId,
-          itemName: item.name,
-          quantity,
-        },
         sessionId,
       },
+      orderBy: { timestamp: "desc" },
     });
 
-    await this.publishEvent(event);
+    if (!event) {
+      throw new Error("Event was not logged to database");
+    }
 
     return new EventResponseDto(event);
-  }
-
-  private async publishEvent(event: any): Promise<void> {
-    // In a real implementation, this would publish to a message broker like Kafka, RabbitMQ, etc.
-    // For now, we'll just log it
-    console.log("Event published:", event);
-
-    // Here you could implement real-time notifications via WebSockets, etc.
   }
 }

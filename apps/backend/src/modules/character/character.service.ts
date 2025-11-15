@@ -13,6 +13,7 @@ import {
   HealingReceivedEvent,
   LevelUpEvent,
   DeathEvent,
+  ExperienceGainedEvent,
 } from "../events/dto";
 import {
   CreateCharacterDto,
@@ -569,7 +570,12 @@ export class CharacterService {
     });
 
     // Publish events for changes
-    await this.publishEvents(existingCharacter, updatedCharacter, updateDto);
+    await this.publishEvents(
+      existingCharacter,
+      updatedCharacter,
+      updateDto,
+      userId,
+    );
 
     return this.mapToResponseDto(updatedCharacter);
   }
@@ -864,6 +870,7 @@ export class CharacterService {
     existingCharacter: any,
     updatedCharacter: any,
     updateDto: UpdateCharacterDto,
+    userId?: string,
   ): Promise<void> {
     // Check for HP changes
     if (updateDto.hitPoints) {
@@ -881,6 +888,7 @@ export class CharacterService {
             damageType: "unknown", // Could be enhanced to track damage types
           },
           sessionId: updatedCharacter.campaignId, // Use campaign as session for now
+          ...(userId && { actorId: userId }),
         };
         await this.eventBus.publish(damageEvent);
       } else if (newHP > oldHP) {
@@ -893,6 +901,7 @@ export class CharacterService {
             healing,
           },
           sessionId: updatedCharacter.campaignId,
+          ...(userId && { actorId: userId }),
         };
         await this.eventBus.publish(healingEvent);
       }
@@ -906,6 +915,7 @@ export class CharacterService {
             cause: "damage",
           },
           sessionId: updatedCharacter.campaignId,
+          ...(userId && { actorId: userId }),
         };
         await this.eventBus.publish(deathEvent);
       }
@@ -921,8 +931,29 @@ export class CharacterService {
           oldLevel: existingCharacter.level,
         },
         sessionId: updatedCharacter.campaignId,
+        ...(userId && { actorId: userId }),
       };
       await this.eventBus.publish(levelUpEvent);
+    }
+
+    // Check for experience gained
+    if (
+      updateDto.experiencePoints !== undefined &&
+      updateDto.experiencePoints > existingCharacter.experiencePoints
+    ) {
+      const experienceGained =
+        updateDto.experiencePoints - existingCharacter.experiencePoints;
+      const experienceEvent: ExperienceGainedEvent = {
+        type: EventType.EXPERIENCE_GAINED,
+        targetId: updatedCharacter.id,
+        payload: {
+          experienceGained,
+          totalExperience: updateDto.experiencePoints,
+        },
+        sessionId: updatedCharacter.campaignId,
+        ...(userId && { actorId: userId }),
+      };
+      await this.eventBus.publish(experienceEvent);
     }
   }
 

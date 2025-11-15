@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { CharacterResponseDto } from "@/types/character";
+import { EventType } from "@/types/event";
 import { calculateProficiencyBonus } from "./utils";
 import { CharacterHeader } from "./CharacterHeader";
 import { CharacterTabs } from "./CharacterTabs";
@@ -15,7 +16,7 @@ import { eventApi } from "@/lib/api/event";
 
 export interface CharacterDashboardProps {
   character: CharacterResponseDto;
-  onUpdate: (updates: Partial<CharacterResponseDto>) => void;
+  onUpdate?: (updates: Partial<CharacterResponseDto>) => void;
 }
 
 type CharacterTab = "overview" | "spells" | "features" | "rolls";
@@ -242,15 +243,15 @@ export default function CharacterDashboard({
     let eventMessage = "";
 
     switch (type) {
-      case "LEVEL_UP":
+      case EventType.LEVEL_UP:
         updates.level = payload.newLevel;
         eventMessage = `Leveled up to level ${payload.newLevel}`;
         break;
-      case "EXPERIENCE_GAINED":
+      case EventType.EXPERIENCE_GAINED:
         updates.experiencePoints = payload.totalExperience;
         eventMessage = `Gained ${payload.experienceGained} experience points`;
         break;
-      case "SKILL_PROFICIENCY_ADDED":
+      case EventType.SKILL_PROFICIENCY_ADDED:
         // Update skillProficiencies
         const existingSkills = localCharacter.skillProficiencies || [];
         const skillIndex = existingSkills.findIndex(
@@ -273,7 +274,7 @@ export default function CharacterDashboard({
         updates.skillProficiencies = existingSkills;
         eventMessage = `Added proficiency in ${payload.skill}`;
         break;
-      case "DAMAGE_APPLIED":
+      case EventType.DAMAGE_APPLIED:
         if (localCharacter.hitPoints) {
           updates.hitPoints = {
             ...localCharacter.hitPoints,
@@ -285,7 +286,7 @@ export default function CharacterDashboard({
         }
         eventMessage = `Took ${payload.damage} damage`;
         break;
-      case "HEALING_RECEIVED":
+      case EventType.HEALING_RECEIVED:
         if (localCharacter.hitPoints) {
           updates.hitPoints = {
             ...localCharacter.hitPoints,
@@ -297,7 +298,7 @@ export default function CharacterDashboard({
         }
         eventMessage = `Received ${payload.healing} healing`;
         break;
-      case "QUEST_FINISHED":
+      case EventType.QUEST_FINISHED:
         updates.experiencePoints =
           (localCharacter.experiencePoints || 0) + payload.experienceReward;
         eventMessage = `Completed quest, gained ${payload.experienceReward} experience`;
@@ -385,7 +386,7 @@ export default function CharacterDashboard({
         <OverviewTab
           character={localCharacter}
           proficiencyBonus={proficiencyBonus}
-          onUpdate={onUpdate}
+          onUpdate={onUpdate || (() => {})}
         />
       )}
 

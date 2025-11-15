@@ -6,6 +6,8 @@ export class ExperienceGainedDomainEvent implements ExperienceGainedEvent {
   actorId?: string;
   targetId?: string;
   sessionId?: string;
+  campaignId?: string;
+  global?: boolean;
   type: "EXPERIENCE_GAINED";
   payload: {
     experienceGained: number;
@@ -18,6 +20,8 @@ export class ExperienceGainedDomainEvent implements ExperienceGainedEvent {
     totalExperience: number,
     sessionId?: string,
     actorId?: string,
+    campaignId?: string,
+    global?: boolean,
   ) {
     this.targetId = targetId;
     this.type = "EXPERIENCE_GAINED";
@@ -27,5 +31,7 @@ export class ExperienceGainedDomainEvent implements ExperienceGainedEvent {
     };
     if (sessionId !== undefined) this.sessionId = sessionId;
     if (actorId !== undefined) this.actorId = actorId;
+    if (campaignId !== undefined) this.campaignId = campaignId;
+    if (global !== undefined) this.global = global;
   }
 }

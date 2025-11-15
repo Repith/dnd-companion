@@ -91,7 +91,7 @@ export class EventsController {
   /**
    * SSE endpoint for real-time session events
    */
-  @Sse("character/:characterId/stream")
+  @Sse("session/:sessionId/stream")
   @UseGuards(JwtAuthGuard)
   getSessionEventsSSE(
     @Param("sessionId") sessionId: string,
@@ -126,7 +126,7 @@ export class EventsController {
   ): Observable<{ data: any }> {
     this.logger.debug("SSE subscription for campaign events", { campaignId });
     return this.eventBusService
-      .getEventObservable(undefined, { sessionId: campaignId })
+      .getEventObservable(undefined, { campaignId })
       .pipe(map((event) => ({ data: event })));
   }
 }

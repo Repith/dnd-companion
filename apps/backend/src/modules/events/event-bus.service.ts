@@ -143,6 +143,12 @@ export class EventBusService implements EventPublisher, EventSubscriber {
     if (filter.sessionId && event.sessionId !== filter.sessionId) {
       return false;
     }
+    if (filter.campaignId && event.campaignId !== filter.campaignId) {
+      return false;
+    }
+    if (filter.global !== undefined && event.global !== filter.global) {
+      return false;
+    }
     return true;
   }
 

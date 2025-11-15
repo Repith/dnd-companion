@@ -43,6 +43,8 @@ export class EventLoggingService implements OnModuleInit {
         targetId: event.targetId ?? null,
         payload: event.payload || {},
         sessionId: event.sessionId ?? null,
+        campaignId: event.campaignId ?? null,
+        global: event.global ?? false,
       };
 
       await this.prisma.gameEvent.create({
@@ -68,6 +70,8 @@ export class EventLoggingService implements OnModuleInit {
     actorId?: string;
     targetId?: string;
     sessionId?: string;
+    campaignId?: string;
+    global?: boolean;
     startDate?: Date;
     endDate?: Date;
     limit?: number;
@@ -86,6 +90,12 @@ export class EventLoggingService implements OnModuleInit {
     }
     if (query.sessionId) {
       where.sessionId = query.sessionId;
+    }
+    if (query.campaignId) {
+      where.campaignId = query.campaignId;
+    }
+    if (query.global !== undefined) {
+      where.global = query.global;
     }
     if (query.startDate || query.endDate) {
       where.timestamp = {};
@@ -131,8 +141,15 @@ export class EventLoggingService implements OnModuleInit {
   /**
    * Get event statistics
    */
-  async getEventStats(sessionId?: string) {
-    const where = sessionId ? { sessionId } : {};
+  async getEventStats(
+    sessionId?: string,
+    campaignId?: string,
+    global?: boolean,
+  ) {
+    const where: any = {};
+    if (sessionId) where.sessionId = sessionId;
+    if (campaignId) where.campaignId = campaignId;
+    if (global !== undefined) where.global = global;
 
     const [totalEvents, eventsByType, eventsBySession] = await Promise.all([
       this.prisma.gameEvent.count({ where }),
