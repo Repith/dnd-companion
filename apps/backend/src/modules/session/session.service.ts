@@ -178,7 +178,6 @@ export class SessionService {
     const event = await this.prisma.gameEvent.create({
       data: {
         ...eventDto,
-        sessionId,
       },
     });
 
@@ -297,7 +296,7 @@ export class SessionService {
     const event = await this.prisma.gameEvent.create({
       data: {
         type: eventType,
-        actorId: userId, // The user performing the action
+        actorId: userId,
         targetId: characterId,
         payload: {
           amount: Math.abs(hpAdjustment),

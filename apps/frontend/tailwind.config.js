@@ -8,9 +8,16 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        "dnd-primary": "#8B5A3C",
-        "dnd-secondary": "#D4AF37",
-        "dnd-accent": "#722F37",
+        background: "var(--background)",
+        foreground: "var(--foreground)",
+        accent: "var(--accent)",
+        sidebar: {
+          bg: "var(--sidebar-bg)",
+          border: "var(--sidebar-border)",
+        },
+        "dnd-primary": "#292524",
+        "dnd-secondary": "#e7e5e4",
+        "dnd-accent": "#1c1917",
       },
     },
   },

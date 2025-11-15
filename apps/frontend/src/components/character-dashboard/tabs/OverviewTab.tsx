@@ -9,7 +9,7 @@ import { AbilitiesPanel } from "../overview/AbilitiesPanel";
 interface OverviewTabProps {
   character: CharacterResponseDto;
   proficiencyBonus: number;
-  onUpdate?: (updates: Partial<CharacterResponseDto>) => void;
+  onUpdate: (updates: Partial<CharacterResponseDto>) => void;
 }
 
 export const OverviewTab: React.FC<OverviewTabProps> = ({

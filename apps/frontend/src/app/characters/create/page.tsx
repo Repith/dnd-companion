@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import ProtectedRoute from "@/components/ProtectedRoute";
-import CharacterBuilder from "@/components/CharacterBuilder";
+import CharacterBuilder from "@/components/character-builder/CharacterBuilder";
 
 export const dynamic = "force-dynamic";
 

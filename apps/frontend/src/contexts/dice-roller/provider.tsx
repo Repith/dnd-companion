@@ -15,6 +15,7 @@ import DiceBox from "@3d-dice/dice-box";
 
 import { useAuth } from "@/contexts/AuthContext";
 import { diceRollApi } from "@/lib/api/dice-roll";
+import { sessionApi } from "@/lib/api/session";
 import { useRollHistory } from "@/contexts/RollHistoryContext";
 
 import type {
@@ -35,6 +36,7 @@ interface DiceRollerContextValue {
     notations: DiceNotation[],
     meta?: DiceRollMeta,
     characterId?: string,
+    sessionId?: string,
   ) => Promise<ExportedRollResult>;
 
   clear: () => void;
@@ -141,6 +143,7 @@ export default function DiceRollerProvider({
       notations: DiceNotation[],
       meta?: DiceRollMeta,
       characterId?: string,
+      sessionId?: string,
     ): Promise<ExportedRollResult> => {
       const box = diceBoxRef.current;
       const display = displayRef.current;
@@ -233,6 +236,38 @@ export default function DiceRollerProvider({
           "user:",
           !!user,
         );
+      }
+
+      // If sessionId is provided, publish roll event via CQRS
+      if (sessionId && user) {
+        try {
+          const rollEventData: any = {
+            notation: notations
+              .map((n) =>
+                typeof n === "string"
+                  ? n
+                  : `${n.qty ?? 1}d${n.sides}${
+                      n.modifier ? `+${n.modifier}` : ""
+                    }`,
+              )
+              .join(" + "),
+            result: total,
+            individualResults,
+          };
+
+          if (meta?.label) rollEventData.label = meta.label;
+          if (characterId) rollEventData.characterId = characterId;
+
+          console.log("DEBUG: Calling sessionApi.rollDice with", {
+            sessionId,
+            rollEventData,
+          });
+          await sessionApi.rollDice(sessionId, rollEventData);
+          console.log("DEBUG: Roll event published successfully");
+        } catch (error) {
+          console.error("Failed to publish roll event:", error);
+          // Don't throw error to avoid breaking the roll functionality
+        }
       }
 
       return exported;

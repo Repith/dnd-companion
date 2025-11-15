@@ -21,15 +21,8 @@ export class LocationService {
 
   async create(
     createDto: CreateLocationDto,
-    campaignId: string,
     userId: string,
   ): Promise<LocationResponseDto> {
-    // Check if user is DM of the campaign
-    const isUserDM = await this.campaignService.isUserDM(campaignId, userId);
-    if (!isUserDM) {
-      throw new ForbiddenException("Only the DM can create locations");
-    }
-
     // Validate parent location if provided
     if (createDto.parentId) {
       const parentLocation = await this.prisma.location.findUnique({
@@ -38,27 +31,14 @@ export class LocationService {
       if (!parentLocation) {
         throw new NotFoundException("Parent location not found");
       }
-      // Check if parent location belongs to the same campaign
-      const parentInCampaign = await this.prisma.campaign.findFirst({
-        where: {
-          id: campaignId,
-          locations: { some: { id: createDto.parentId } },
-        },
-      });
-      if (!parentInCampaign) {
-        throw new BadRequestException(
-          "Parent location does not belong to this campaign",
-        );
-      }
     }
 
     const location = await this.prisma.location.create({
       data: {
         ...createDto,
-        campaigns: {
-          connect: { id: campaignId },
-        },
-      },
+        creatorId: userId,
+        visibility: "PUBLIC",
+      } as any,
       include: {
         npcs: true,
         quests: true,
@@ -74,23 +54,11 @@ export class LocationService {
     });
   }
 
-  async findAll(
-    campaignId: string,
-    userId: string,
-  ): Promise<LocationResponseDto[]> {
-    // Check if user is in campaign
-    const isUserInCampaign = await this.campaignService.isUserInCampaign(
-      campaignId,
-      userId,
-    );
-    if (!isUserInCampaign) {
-      throw new ForbiddenException("You are not part of this campaign");
-    }
-
+  async findAll(userId: string): Promise<LocationResponseDto[]> {
     const locations = await this.prisma.location.findMany({
       where: {
-        campaigns: { some: { id: campaignId } },
-      },
+        OR: [{ visibility: "PUBLIC" }, { creatorId: userId }],
+      } as any,
       include: {
         npcs: true,
         quests: true,
@@ -114,23 +82,10 @@ export class LocationService {
 
   async findById(
     id: string,
-    campaignId: string,
     userId: string,
   ): Promise<LocationResponseDto | null> {
-    // Check if user is in campaign
-    const isUserInCampaign = await this.campaignService.isUserInCampaign(
-      campaignId,
-      userId,
-    );
-    if (!isUserInCampaign) {
-      throw new ForbiddenException("You are not part of this campaign");
-    }
-
-    const location = await this.prisma.location.findFirst({
-      where: {
-        id,
-        campaigns: { some: { id: campaignId } },
-      },
+    const location = await this.prisma.location.findUnique({
+      where: { id },
       include: {
         npcs: true,
         quests: true,
@@ -144,6 +99,11 @@ export class LocationService {
       return null;
     }
 
+    const loc = location as any;
+    if (loc.visibility !== "PUBLIC" && loc.creatorId !== userId) {
+      throw new ForbiddenException("You don't have access to this location");
+    }
+
     return new LocationResponseDto({
       ...location,
       npcIds: location.npcs.map((n) => n.id),
@@ -155,24 +115,19 @@ export class LocationService {
   async update(
     id: string,
     updateDto: UpdateLocationDto,
-    campaignId: string,
     userId: string,
   ): Promise<LocationResponseDto> {
-    // Check if user is DM
-    const isUserDM = await this.campaignService.isUserDM(campaignId, userId);
-    if (!isUserDM) {
-      throw new ForbiddenException("Only the DM can update locations");
-    }
-
-    const location = await this.prisma.location.findFirst({
-      where: {
-        id,
-        campaigns: { some: { id: campaignId } },
-      },
+    const location = await this.prisma.location.findUnique({
+      where: { id },
     });
 
     if (!location) {
       throw new NotFoundException("Location not found");
+    }
+
+    const loc = location as any;
+    if (loc.visibility !== "PUBLIC" && loc.creatorId !== userId) {
+      throw new ForbiddenException("You don't have access to this location");
     }
 
     // Validate parent location if being updated
@@ -182,18 +137,6 @@ export class LocationService {
       });
       if (!parentLocation) {
         throw new NotFoundException("Parent location not found");
-      }
-      // Check if parent location belongs to the same campaign
-      const parentInCampaign = await this.prisma.campaign.findFirst({
-        where: {
-          id: campaignId,
-          locations: { some: { id: updateDto.parentId } },
-        },
-      });
-      if (!parentInCampaign) {
-        throw new BadRequestException(
-          "Parent location does not belong to this campaign",
-        );
       }
     }
 
@@ -217,18 +160,9 @@ export class LocationService {
     });
   }
 
-  async delete(id: string, campaignId: string, userId: string): Promise<void> {
-    // Check if user is DM
-    const isUserDM = await this.campaignService.isUserDM(campaignId, userId);
-    if (!isUserDM) {
-      throw new ForbiddenException("Only the DM can delete locations");
-    }
-
-    const location = await this.prisma.location.findFirst({
-      where: {
-        id,
-        campaigns: { some: { id: campaignId } },
-      },
+  async delete(id: string, userId: string): Promise<void> {
+    const location = await this.prisma.location.findUnique({
+      where: { id },
       include: {
         children: true,
       },
@@ -236,6 +170,11 @@ export class LocationService {
 
     if (!location) {
       throw new NotFoundException("Location not found");
+    }
+
+    const loc = location as any;
+    if (loc.visibility !== "PUBLIC" && loc.creatorId !== userId) {
+      throw new ForbiddenException("You don't have access to this location");
     }
 
     // Check if location has children
@@ -250,24 +189,12 @@ export class LocationService {
     });
   }
 
-  async getHierarchy(
-    campaignId: string,
-    userId: string,
-  ): Promise<LocationResponseDto[]> {
-    // Check if user is in campaign
-    const isUserInCampaign = await this.campaignService.isUserInCampaign(
-      campaignId,
-      userId,
-    );
-    if (!isUserInCampaign) {
-      throw new ForbiddenException("You are not part of this campaign");
-    }
-
-    // Get all locations for the campaign
+  async getHierarchy(userId: string): Promise<LocationResponseDto[]> {
+    // Get all accessible locations
     const locations = await this.prisma.location.findMany({
       where: {
-        campaigns: { some: { id: campaignId } },
-      },
+        OR: [{ visibility: "PUBLIC" }, { creatorId: userId }],
+      } as any,
       include: {
         npcs: true,
         quests: true,

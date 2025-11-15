@@ -12,6 +12,7 @@ import {
   UsePipes,
   ForbiddenException,
 } from "@nestjs/common";
+import { CommandBus } from "@nestjs/cqrs";
 import { AuthenticatedRequest } from "../../common/types";
 import { SessionService } from "./session.service";
 import {
@@ -21,11 +22,15 @@ import {
   EventResponseDto,
 } from "./dto";
 import { JwtAuthGuard } from "../auth";
+import { RollDiceCommand } from "./commands/roll-dice.command";
 
 @Controller("campaigns/:campaignId/sessions")
 @UsePipes(new ValidationPipe({ transform: true }))
 export class SessionController {
-  constructor(private readonly sessionService: SessionService) {}
+  constructor(
+    private readonly sessionService: SessionService,
+    private readonly commandBus: CommandBus,
+  ) {}
 
   @Post()
   @UseGuards(JwtAuthGuard)
@@ -126,5 +131,31 @@ export class SessionController {
       body.quantity || 1,
       req.user.id,
     );
+  }
+
+  @Post(":id/rolls")
+  @UseGuards(JwtAuthGuard)
+  async rollDice(
+    @Param("id") sessionId: string,
+    @Body()
+    body: {
+      notation: string;
+      result: number;
+      label?: string;
+      characterId?: string;
+      individualResults?: number[];
+    },
+    @Request() req: AuthenticatedRequest,
+  ): Promise<void> {
+    const command = new RollDiceCommand(
+      body.notation,
+      body.result,
+      body.label,
+      body.characterId,
+      body.individualResults,
+      sessionId,
+    );
+
+    await this.commandBus.execute(command);
   }
 }

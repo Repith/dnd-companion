@@ -110,6 +110,11 @@ enum Rarity {
   LEGENDARY
 }
 
+enum Visibility {
+  PUBLIC
+  PRIVATE
+}
+
 enum SpellSchool {
   ABJURATION
   CONJURATION
@@ -153,8 +158,12 @@ enum EventType {
   ITEM_GIVEN
   SPELL_CAST
   QUEST_UPDATED
+  QUEST_FINISHED
   LEVEL_UP
   DEATH
+  SKILL_PROFICIENCY_ADDED
+  EXPERIENCE_GAINED
+  DICE_ROLL
 }
 
 enum QuestStatus {
@@ -183,18 +192,36 @@ enum NPCRole {
   VILLAIN
 }
 
+enum CampaignStatus {
+  ACTIVE
+  PAUSED
+  FINISHED
+  CANCELLED
+}
+
+enum QuestType {
+  MAIN
+  SIDE
+}
+
 model User {
   id               String            @id @default(uuid()) @db.Uuid
   username         String?           @unique
   email            String            @unique
+  emailVerified Boolean @default(false)
   passwordHash     String
   roles            Role[]
   subscriptionTier SubscriptionTier? @default(FREE)
-  profile          Json?             // { displayName: string, avatarUrl: string, locale: string }
+  profile          Json?             
   lastLogin        DateTime?
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
+  deletedAt        DateTime?
   characters       Character[]
+  createdCharacters Character[]      @relation("Creator")
+  createdLocations  Location[]       @relation("Creator")
+  createdSpells    Spell[]           @relation("Creator")
+  createdItems     Item[]            @relation("Creator")
   campaignsAsDM    Campaign[]        @relation("DM")
   campaignsAsPlayer Campaign[]       @relation("Player")
   diceRolls        DiceRoll[]
@@ -211,11 +238,15 @@ model Campaign {
   sessions         Session[]
   npcs             Character[]  @relation("NPCCampaigns")
   locations        Location[]
+  status           CampaignStatus @default(ACTIVE)
+  tags             String[]     @default([])
   activePlayers    Character[]  @relation("ActiveCampaign")
   currentSession   Session?     @relation("CurrentSession")
   currentSessionId String?      @db.Uuid
   createdAt        DateTime     @default(now())
   updatedAt        DateTime     @updatedAt
+
+  @@index([dmId])
 }
 
 model Location {
@@ -230,6 +261,9 @@ model Location {
   npcs        Character[]
   quests      Quest[]
   campaigns   Campaign[]
+  creator     User?        @relation("Creator", fields: [creatorId], references: [id])
+  creatorId   String?      @db.Uuid
+  visibility  Visibility   @default(PUBLIC)
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
 }
@@ -294,8 +328,8 @@ model GameEvent {
   target     Character? @relation("Target", fields: [targetId], references: [id])
   targetId   String?    @db.Uuid
   payload    Json?
-  session    Session    @relation(fields: [sessionId], references: [id])
-  sessionId  String     @db.Uuid
+  session    Session?   @relation(fields: [sessionId], references: [id])
+  sessionId  String?    @db.Uuid
 }
 
 model Feature {
@@ -373,12 +407,16 @@ model Character {
   currency          Json               // { cp: 0, sp: 0, ep: 0, gp: 0, pp: 0 }
   owner             User?              @relation(fields: [ownerId], references: [id])
   ownerId           String?            @db.Uuid
+  creator           User?              @relation("Creator", fields: [creatorId], references: [id])
+  creatorId         String?            @db.Uuid
+  visibility        Visibility         @default(PUBLIC)
   activeCampaign    Campaign?          @relation("ActiveCampaign", fields: [campaignId], references: [id])
   campaignId        String?            @db.Uuid
   isNPC             Boolean            @default(false)
   npcRole           NPCRole?
   challengeRating   Float?
   lootTable         Json?              // list of item ids
+  isDemo            Boolean            @default(false)
   knownSpells       String[]           // spell ids
   preparedSpells    String[]           // spell ids
   quests            CharacterQuest[]
@@ -388,8 +426,14 @@ model Character {
   npcCampaigns      Campaign[]         @relation("NPCCampaigns")
   features          Feature[]
   diceRolls         DiceRoll[]
+  avatarUrl         String?
+  isDead            Boolean  @default(false)
+  isRetired         Boolean  @default(false)
+  lastPlayedAt      DateTime?
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
+
+  @@index([ownerId])
 }
 
 model Item {
@@ -403,6 +447,9 @@ model Item {
   source      String?
   description String?
   inventoryItems InventoryItem[]
+  creator        User?        @relation("Creator", fields: [creatorId], references: [id])
+  creatorId      String?      @db.Uuid
+  visibility     Visibility   @default(PUBLIC)
 }
 
 model Spell {
@@ -417,6 +464,9 @@ model Spell {
   classes        String[]     // list of class names
   description    String?
   higherLevel    String?
+  creator     User?      @relation("Creator", fields: [creatorId], references: [id])
+  creatorId   String?    @db.Uuid
+  visibility  Visibility @default(PUBLIC)
 }
 
 model Quest {
@@ -432,6 +482,8 @@ model Quest {
   npcIds           String[]   // list of character ids
   locationIds      String[]   // list of location ids
   notes            String?
+  type             QuestType @default(SIDE)
+  orderIndex       Int       @default(0)
   participants     CharacterQuest[]
   locations        Location[]
   createdAt        DateTime   @default(now())
@@ -471,4 +523,7 @@ model DiceRoll {
   individualResults Int[]    // array of individual die results
   totalResult      Int
   timestamp        DateTime  @default(now())
+
+  @@index([userId, timestamp])
+  @@index([characterId, timestamp])
 }

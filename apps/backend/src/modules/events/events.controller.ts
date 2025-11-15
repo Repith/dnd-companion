@@ -5,17 +5,23 @@ import {
   Param,
   UseGuards,
   Logger,
+  Sse,
 } from "@nestjs/common";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { EventLoggingService } from "./event-logging.service";
+import { EventBusService } from "./event-bus.service";
 import { EventQueryDto, EventResponseDto, EventStatsDto } from "./dto";
+import { Observable, map } from "rxjs";
 
 @Controller("events")
 @UseGuards(JwtAuthGuard)
 export class EventsController {
   private readonly logger = new Logger(EventsController.name);
 
-  constructor(private readonly eventLoggingService: EventLoggingService) {}
+  constructor(
+    private readonly eventLoggingService: EventLoggingService,
+    private readonly eventBusService: EventBusService,
+  ) {}
 
   /**
    * Get events with filtering and pagination
@@ -80,5 +86,47 @@ export class EventsController {
       ...query,
       actorId: characterId, // Events where character is the actor
     });
+  }
+
+  /**
+   * SSE endpoint for real-time session events
+   */
+  @Sse("character/:characterId/stream")
+  @UseGuards(JwtAuthGuard)
+  getSessionEventsSSE(
+    @Param("sessionId") sessionId: string,
+  ): Observable<{ data: any }> {
+    this.logger.debug("SSE subscription for session events", { sessionId });
+    return this.eventBusService
+      .getEventObservable(undefined, { sessionId })
+      .pipe(map((event) => ({ data: event })));
+  }
+
+  /**
+   * SSE endpoint for real-time character events
+   */
+  @Sse("character/:characterId/stream")
+  @UseGuards(JwtAuthGuard)
+  getCharacterEventsSSE(
+    @Param("characterId") characterId: string,
+  ): Observable<{ data: any }> {
+    this.logger.debug("SSE subscription for character events", { characterId });
+    return this.eventBusService
+      .getEventObservable(undefined, { targetId: characterId })
+      .pipe(map((event) => ({ data: event })));
+  }
+
+  /**
+   * SSE endpoint for real-time campaign events
+   */
+  @Sse("campaign/:campaignId/stream")
+  @UseGuards(JwtAuthGuard)
+  getCampaignEventsSSE(
+    @Param("campaignId") campaignId: string,
+  ): Observable<{ data: any }> {
+    this.logger.debug("SSE subscription for campaign events", { campaignId });
+    return this.eventBusService
+      .getEventObservable(undefined, { sessionId: campaignId })
+      .pipe(map((event) => ({ data: event })));
   }
 }

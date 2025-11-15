@@ -20,7 +20,18 @@ import {
   CharacterResponseDto,
   SkillName,
   AbilityName,
+  MulticlassDto,
 } from "./dto";
+import {
+  calculateProficiencyBonus,
+  calculateAbilityModifier,
+  HIT_DICE,
+  SPELLCASTING_CLASSES,
+  SPELLCASTING_ABILITY,
+  getSpellSlots,
+  calculateSpellSaveDC,
+  calculateSpellAttackBonus,
+} from "../../common/constants";
 
 @Injectable()
 export class CharacterService {
@@ -31,17 +42,30 @@ export class CharacterService {
   ) {}
 
   /**
-   * Calculate proficiency bonus based on character level
+   * Initialize spellcasting data for a character
    */
-  private calculateProficiencyBonus(level: number): number {
-    return Math.floor((level - 1) / 4) + 2;
-  }
+  private initializeSpellcasting(
+    characterClass: string,
+    level: number,
+    abilityScores: any,
+  ): any {
+    const spellcastingAbility =
+      SPELLCASTING_ABILITY[characterClass] || "INTELLIGENCE";
+    const abilityModifier = calculateAbilityModifier(
+      abilityScores[spellcastingAbility.toLowerCase()],
+    );
 
-  /**
-   * Calculate ability modifier from score
-   */
-  private calculateAbilityModifier(score: number): number {
-    return Math.floor((score - 10) / 2);
+    const spellSlots = getSpellSlots(characterClass, level);
+    const proficiencyBonus = calculateProficiencyBonus(level);
+
+    return {
+      class: characterClass,
+      saveDC: calculateSpellSaveDC(abilityModifier, proficiencyBonus),
+      attackBonus: calculateSpellAttackBonus(abilityModifier, proficiencyBonus),
+      knownSpells: [],
+      preparedSpells: [],
+      slots: spellSlots,
+    };
   }
 
   /**
@@ -146,19 +170,9 @@ export class CharacterService {
    */
   async create(
     createDto: CreateCharacterDto,
-    userId?: string,
+    userId: string,
   ): Promise<CharacterResponseDto> {
     this.validateDnDRules(createDto);
-
-    // Check if user exists (for player characters)
-    if (createDto.ownerId) {
-      const user = await this.prisma.user.findUnique({
-        where: { id: createDto.ownerId },
-      });
-      if (!user) {
-        throw new NotFoundException("User not found");
-      }
-    }
 
     // Check if campaign exists
     if (createDto.campaignId) {
@@ -170,15 +184,77 @@ export class CharacterService {
       }
     }
 
+    // Handle class data - transform single class to multiclasses if needed
+    let multiclassesData = createDto.multiclasses;
+    if (!multiclassesData && createDto.class) {
+      multiclassesData = [{ class: createDto.class, level: createDto.level }];
+    }
+
+    // Validate multiclass levels and combinations if provided
+    if (multiclassesData) {
+      const totalLevel = multiclassesData.reduce(
+        (sum, mc) => sum + mc.level,
+        0,
+      );
+      if (totalLevel !== createDto.level) {
+        throw new BadRequestException(
+          `Total multiclass levels (${totalLevel}) must equal character level (${createDto.level})`,
+        );
+      }
+
+      // Validate multiclass combinations (basic restrictions)
+      this.validateMulticlassCombination(multiclassesData);
+    }
+
+    // Calculate hit points based on class hit dice if not provided
+    let hitPointsData = createDto.hitPoints;
+    if (!hitPointsData && multiclassesData && multiclassesData.length > 0) {
+      const conModifier = calculateAbilityModifier(
+        createDto.abilityScores.constitution,
+      );
+
+      let totalHP = 0;
+      for (const mc of multiclassesData) {
+        const hitDie = HIT_DICE[mc.class] || 8;
+        // First level gets full hit die + con modifier
+        // Subsequent levels get average (floor(hitDie/2)+1) + con modifier
+        const firstLevelHP = hitDie + conModifier;
+        const additionalLevelsHP =
+          (mc.level - 1) * (Math.floor(hitDie / 2) + 1 + conModifier);
+        totalHP += firstLevelHP + additionalLevelsHP;
+      }
+
+      hitPointsData = {
+        max: Math.max(totalHP, 1), // Ensure at least 1 HP
+        current: Math.max(totalHP, 1),
+        temporary: 0,
+      };
+    }
+
+    // Initialize spellcasting data if character has spellcasting class
+    let spellcastingData = createDto.spellcasting;
+    if (!spellcastingData && multiclassesData) {
+      const spellcastingClass = multiclassesData.find((mc) =>
+        SPELLCASTING_CLASSES.includes(mc.class),
+      );
+      if (spellcastingClass) {
+        spellcastingData = this.initializeSpellcasting(
+          spellcastingClass.class,
+          spellcastingClass.level,
+          createDto.abilityScores,
+        );
+      }
+    }
+
     // Create character with nested relations
     const character = await this.prisma.character.create({
       data: {
         name: createDto.name,
         race: createDto.race,
         subrace: createDto.subrace,
-        multiclasses: createDto.multiclasses
+        multiclasses: multiclassesData
           ? {
-              create: createDto.multiclasses.map((mc) => ({
+              create: multiclassesData.map((mc) => ({
                 class: mc.class,
                 level: mc.level,
               })),
@@ -196,12 +272,12 @@ export class CharacterService {
           create: createDto.skillProficiencies,
         },
         savingThrows: createDto.savingThrows,
-        proficiencyBonus: this.calculateProficiencyBonus(createDto.level),
-        hitPoints: createDto.hitPoints as any,
+        proficiencyBonus: calculateProficiencyBonus(createDto.level),
+        hitPoints: hitPointsData as any,
         armorClass: createDto.armorClass,
         initiative: createDto.initiative,
         speed: createDto.speed,
-        spellcasting: createDto.spellcasting as any,
+        spellcasting: spellcastingData as any,
         featuresTraits: createDto.featuresTraits,
         personalityTraits: createDto.personalityTraits,
         ideals: createDto.ideals,
@@ -211,10 +287,13 @@ export class CharacterService {
         backstory: createDto.backstory,
         languages: createDto.languages,
         currency: createDto.currency as any,
-        ownerId: createDto.ownerId,
+        ownerId: createDto.isNPC ? null : userId,
+        creatorId: createDto.isNPC ? userId : null,
+        visibility: createDto.isNPC ? "PUBLIC" : null,
         campaignId: createDto.campaignId,
-        knownSpells: createDto.spellcasting?.knownSpells || [],
-        preparedSpells: createDto.spellcasting?.preparedSpells || [],
+        isNPC: createDto.isNPC || false,
+        knownSpells: spellcastingData?.knownSpells || [],
+        preparedSpells: spellcastingData?.preparedSpells || [],
       } as any,
       include: {
         abilityScores: true,
@@ -228,6 +307,32 @@ export class CharacterService {
     await this.inventoryService.createCharacterInventory(character.id);
     console.log(`Successfully created inventory for character ${character.id}`);
 
+    // Add starting equipment based on class and background
+    if (multiclassesData && multiclassesData.length > 0) {
+      const primaryClass = multiclassesData[0].class;
+      const startingEquipment = this.getStartingEquipment(
+        primaryClass,
+        createDto.background,
+      );
+      for (const itemName of startingEquipment) {
+        try {
+          // Try to find the item by name and add it to inventory
+          const item = await this.prisma.item.findFirst({
+            where: { name: { equals: itemName, mode: "insensitive" } },
+          });
+          if (item) {
+            const addItemDto = { itemId: item.id, quantity: 1 };
+            await this.inventoryService.addItem(character.id, addItemDto);
+          }
+        } catch (error) {
+          console.warn(
+            `Could not add starting equipment item: ${itemName}`,
+            error,
+          );
+        }
+      }
+    }
+
     return this.mapToResponseDto(character);
   }
 
@@ -238,9 +343,36 @@ export class CharacterService {
     const characters = await this.prisma.character.findMany({
       where: {
         OR: [
-          { ownerId: userId },
-          { campaignId: { not: null } }, // NPCs in campaigns
+          { ownerId: userId }, // Player characters owned by user
+          {
+            AND: [
+              { isNPC: true },
+              {
+                OR: [{ visibility: "PUBLIC" }, { creatorId: userId }],
+              },
+            ],
+          }, // NPCs that are public or created by user
         ],
+        NOT: { isDemo: true }, // Filter out demo characters (exclude isDemo: true, include false and null)
+      },
+      include: {
+        abilityScores: true,
+        skillProficiencies: true,
+        multiclasses: true,
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    return characters.map((character) => this.mapToResponseDto(character));
+  }
+
+  /**
+   * Find all demo characters
+   */
+  async findDemoCharacters(): Promise<CharacterResponseDto[]> {
+    const characters = await this.prisma.character.findMany({
+      where: {
+        isDemo: true,
       },
       include: {
         abilityScores: true,
@@ -271,8 +403,15 @@ export class CharacterService {
     }
 
     // Check ownership/access permissions
-    if (character.ownerId && character.ownerId !== userId) {
-      throw new ForbiddenException("You don't have access to this character");
+    const char = character as any;
+    if (char.isNPC) {
+      if (char.visibility !== "PUBLIC" && char.creatorId !== userId) {
+        throw new ForbiddenException("You don't have access to this NPC");
+      }
+    } else {
+      if (char.ownerId && char.ownerId !== userId) {
+        throw new ForbiddenException("You don't have access to this character");
+      }
     }
 
     return this.mapToResponseDto(character);
@@ -301,8 +440,15 @@ export class CharacterService {
       throw new NotFoundException("Character not found");
     }
 
-    if (existingCharacter.ownerId && existingCharacter.ownerId !== userId) {
-      throw new ForbiddenException("You don't have access to this character");
+    const char = existingCharacter as any;
+    if (char.isNPC) {
+      if (char.visibility !== "PUBLIC" && char.creatorId !== userId) {
+        throw new ForbiddenException("You don't have access to this NPC");
+      }
+    } else {
+      if (char.ownerId && char.ownerId !== userId) {
+        throw new ForbiddenException("You don't have access to this character");
+      }
     }
 
     // Prepare update data
@@ -342,9 +488,7 @@ export class CharacterService {
 
     // Update proficiency bonus if level changed
     if (updateDto.level !== undefined) {
-      updateData.proficiencyBonus = this.calculateProficiencyBonus(
-        updateDto.level,
-      );
+      updateData.proficiencyBonus = calculateProficiencyBonus(updateDto.level);
     }
 
     // Handle nested object updates
@@ -378,14 +522,39 @@ export class CharacterService {
       };
     }
 
-    // Handle multiclasses update
-    if (updateDto.multiclasses !== undefined) {
+    // Handle class and multiclasses update
+    if (updateDto.class !== undefined || updateDto.multiclasses !== undefined) {
+      let multiclassesData = updateDto.multiclasses;
+      if (!multiclassesData && updateDto.class) {
+        multiclassesData = [
+          {
+            class: updateDto.class,
+            level: updateDto.level || existingCharacter.level,
+          },
+        ];
+      }
+
+      // Validate multiclass levels if provided
+      if (multiclassesData) {
+        const totalLevel = multiclassesData.reduce(
+          (sum, mc) => sum + mc.level,
+          0,
+        );
+        const targetLevel = updateDto.level || existingCharacter.level;
+        if (totalLevel !== targetLevel) {
+          throw new BadRequestException(
+            `Total multiclass levels (${totalLevel}) must equal character level (${targetLevel})`,
+          );
+        }
+      }
+
       updateData.multiclasses = {
         deleteMany: {},
-        create: updateDto.multiclasses.map((mc) => ({
-          class: mc.class,
-          level: mc.level,
-        })),
+        create:
+          multiclassesData?.map((mc) => ({
+            class: mc.class,
+            level: mc.level,
+          })) || [],
       };
     }
 
@@ -417,8 +586,15 @@ export class CharacterService {
       throw new NotFoundException("Character not found");
     }
 
-    if (character.ownerId && character.ownerId !== userId) {
-      throw new ForbiddenException("You don't have access to this character");
+    const char = character as any;
+    if (char.isNPC) {
+      if (char.visibility !== "PUBLIC" && char.creatorId !== userId) {
+        throw new ForbiddenException("You don't have access to this NPC");
+      }
+    } else {
+      if (char.ownerId && char.ownerId !== userId) {
+        throw new ForbiddenException("You don't have access to this character");
+      }
     }
 
     await this.prisma.character.delete({
@@ -443,8 +619,15 @@ export class CharacterService {
       throw new NotFoundException("Character not found");
     }
 
-    if (character.ownerId && character.ownerId !== userId) {
-      throw new ForbiddenException("You don't have access to this character");
+    const char = character as any;
+    if (char.isNPC) {
+      if (char.visibility !== "PUBLIC" && char.creatorId !== userId) {
+        throw new ForbiddenException("You don't have access to this NPC");
+      }
+    } else {
+      if (char.ownerId && char.ownerId !== userId) {
+        throw new ForbiddenException("You don't have access to this character");
+      }
     }
 
     // Check if spell exists
@@ -492,8 +675,15 @@ export class CharacterService {
       throw new NotFoundException("Character not found");
     }
 
-    if (character.ownerId && character.ownerId !== userId) {
-      throw new ForbiddenException("You don't have access to this character");
+    const char = character as any;
+    if (char.isNPC) {
+      if (char.visibility !== "PUBLIC" && char.creatorId !== userId) {
+        throw new ForbiddenException("You don't have access to this NPC");
+      }
+    } else {
+      if (char.ownerId && char.ownerId !== userId) {
+        throw new ForbiddenException("You don't have access to this character");
+      }
     }
 
     // Remove spell from known spells
@@ -536,8 +726,15 @@ export class CharacterService {
       throw new NotFoundException("Character not found");
     }
 
-    if (character.ownerId && character.ownerId !== userId) {
-      throw new ForbiddenException("You don't have access to this character");
+    const char = character as any;
+    if (char.isNPC) {
+      if (char.visibility !== "PUBLIC" && char.creatorId !== userId) {
+        throw new ForbiddenException("You don't have access to this NPC");
+      }
+    } else {
+      if (char.ownerId && char.ownerId !== userId) {
+        throw new ForbiddenException("You don't have access to this character");
+      }
     }
 
     // Check if spell is known
@@ -582,8 +779,15 @@ export class CharacterService {
       throw new NotFoundException("Character not found");
     }
 
-    if (character.ownerId && character.ownerId !== userId) {
-      throw new ForbiddenException("You don't have access to this character");
+    const char = character as any;
+    if (char.isNPC) {
+      if (char.visibility !== "PUBLIC" && char.creatorId !== userId) {
+        throw new ForbiddenException("You don't have access to this NPC");
+      }
+    } else {
+      if (char.ownerId && char.ownerId !== userId) {
+        throw new ForbiddenException("You don't have access to this character");
+      }
     }
 
     // Remove spell from prepared spells
@@ -723,6 +927,96 @@ export class CharacterService {
   }
 
   /**
+   * Get starting equipment for a class
+   */
+  private getStartingEquipment(
+    characterClass: string,
+    background?: string,
+  ): string[] {
+    const equipment: Record<string, string[]> = {
+      FIGHTER: [
+        "chain-mail",
+        "longsword",
+        "shield",
+        "light-crossbow",
+        "20-arrows",
+        "explorer-pack",
+        "dungeoneer-pack",
+      ],
+      WIZARD: ["spellbook", "arcane-focus", "scholar-pack", "dagger"],
+      ROGUE: [
+        "rapier",
+        "shortbow",
+        "20-arrows",
+        "leather-armor",
+        "thieves-tools",
+        "burglar-pack",
+      ],
+      // Add more classes as needed
+    };
+
+    const classEquipment = equipment[characterClass] || [];
+    const backgroundEquipment = this.getBackgroundEquipment(background);
+
+    return [...classEquipment, ...backgroundEquipment];
+  }
+
+  /**
+   * Get background equipment
+   */
+  private getBackgroundEquipment(background?: string): string[] {
+    const equipment: Record<string, string[]> = {
+      noble: ["fine-clothes", "signet-ring", "scroll-case", "25-gp"],
+      soldier: ["rank-insignia", "hunting-trap", "bone-dice", "10-gp"],
+      criminal: ["crowbar", "dark-clothes", "15-gp"],
+      // Add more backgrounds as needed
+    };
+
+    return equipment[background || ""] || [];
+  }
+
+  /**
+   * Validate multiclass combinations
+   */
+  private validateMulticlassCombination(multiclasses: MulticlassDto[]): void {
+    const classes = multiclasses.map((mc) => mc.class);
+
+    // Check for duplicate classes
+    const uniqueClasses = new Set(classes);
+    if (uniqueClasses.size !== classes.length) {
+      throw new BadRequestException(
+        "Cannot have duplicate classes in multiclassing",
+      );
+    }
+
+    // Basic multiclass restrictions (simplified)
+    const restrictedCombinations: string[][] = [
+      // Add specific restrictions as needed, e.g., ['BARBARIAN', 'MONK']
+    ];
+
+    for (const restriction of restrictedCombinations) {
+      const hasAllRestricted = restriction.every((cls: string) =>
+        classes.includes(cls as any),
+      );
+      if (hasAllRestricted) {
+        throw new BadRequestException(
+          `Invalid multiclass combination: ${restriction.join(
+            " + ",
+          )} is not allowed`,
+        );
+      }
+    }
+
+    // Ensure at least one class has level 1 or higher
+    const hasValidLevel = multiclasses.some((mc) => mc.level >= 1);
+    if (!hasValidLevel) {
+      throw new BadRequestException(
+        "At least one class must have level 1 or higher",
+      );
+    }
+  }
+
+  /**
    * Map Prisma character to response DTO
    */
   private mapToResponseDto(character: any): CharacterResponseDto {
@@ -764,6 +1058,7 @@ export class CharacterService {
       lootTable: character.lootTable,
       knownSpells: character.knownSpells,
       preparedSpells: character.preparedSpells,
+      avatarUrl: character.avatarUrl,
       createdAt: character.createdAt,
       updatedAt: character.updatedAt,
     };

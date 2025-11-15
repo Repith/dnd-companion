@@ -15,6 +15,16 @@ export const characterApi = {
     });
   },
 
+  // Get all demo characters (public endpoint)
+  getDemo: async (): Promise<CharacterResponseDto[]> => {
+    return withApiRetry(async () => {
+      const response = await api.get<CharacterResponseDto[]>(
+        "/characters/demo",
+      );
+      return response.data;
+    });
+  },
+
   // Get a specific character by ID
   getById: async (id: string): Promise<CharacterResponseDto> => {
     const response = await api.get<CharacterResponseDto>(`/characters/${id}`);
@@ -107,5 +117,19 @@ export const characterApi = {
       },
     );
     return response.data;
+  },
+
+  // Update skill proficiency
+  updateSkillProficiency: async (
+    characterId: string,
+    skill: string,
+    proficient: boolean,
+    expertise: boolean,
+  ): Promise<void> => {
+    await api.post(`/characters/${characterId}/skills/add-proficiency`, {
+      skill,
+      proficient,
+      expertise,
+    });
   },
 };

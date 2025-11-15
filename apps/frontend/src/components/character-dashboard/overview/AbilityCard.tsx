@@ -26,6 +26,7 @@ import {
   getSavingThrowModifier,
 } from "../utils";
 import { useDiceRoller } from "@/contexts/dice-roller";
+import { characterApi } from "@/lib/api/character";
 
 type RollMode = "normal" | "advantage" | "disadvantage";
 
@@ -38,7 +39,7 @@ interface AbilityCardProps {
   character: CharacterResponseDto;
   ability: AbilityName;
   proficiencyBonus: number;
-  onUpdate?: (updates: Partial<CharacterResponseDto>) => void;
+  onUpdate: (updates: Partial<CharacterResponseDto>) => void;
 }
 
 export const AbilityCard: React.FC<AbilityCardProps> = ({
@@ -148,7 +149,7 @@ export const AbilityCard: React.FC<AbilityCardProps> = ({
     });
   };
 
-  const handleSkillProfCycle = (skillName: string) => {
+  const handleSkillProfCycle = async (skillName: string) => {
     if (!onUpdate) return;
 
     const existing = character.skillProficiencies.find(
@@ -165,22 +166,33 @@ export const AbilityCard: React.FC<AbilityCardProps> = ({
       return { proficient: false, expertise: false };
     })();
 
-    const others = character.skillProficiencies.filter(
-      (s) => s.skill !== skillName,
-    );
+    try {
+      await characterApi.updateSkillProficiency(
+        character.id,
+        skillName,
+        nextState.proficient,
+        nextState.expertise,
+      );
 
-    const updated = [
-      ...others,
-      {
-        ...(existing ?? {
-          id: skillName, // placeholder only for React key
-          skill: skillName,
-        }),
-        ...nextState,
-      },
-    ];
+      const others = character.skillProficiencies.filter(
+        (s) => s.skill !== skillName,
+      );
 
-    onUpdate({ skillProficiencies: updated });
+      const updated = [
+        ...others,
+        {
+          ...(existing ?? {
+            id: skillName, // placeholder only for React key
+            skill: skillName,
+          }),
+          ...nextState,
+        },
+      ];
+
+      onUpdate({ skillProficiencies: updated });
+    } catch (error) {
+      console.error("Failed to update skill proficiency", error);
+    }
   };
 
   // --- rolling helpers ---
@@ -290,20 +302,28 @@ export const AbilityCard: React.FC<AbilityCardProps> = ({
         className="mb-2 flex w-full items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-2 py-1.5 text-left text-xs hover:bg-emerald-50/70 dark:border-slate-700 dark:bg-slate-900 dark:hover:bg-slate-800"
       >
         <div className="flex items-center gap-2">
-          <button
-            type="button"
+          <div
+            role="button"
+            tabIndex={0}
             onClick={(e) => {
               e.stopPropagation();
               handleSavingThrowProfToggle();
             }}
-            className="rounded-full p-0.5 text-slate-500 hover:text-emerald-500 dark:text-slate-400 dark:hover:text-emerald-300"
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                e.stopPropagation();
+                handleSavingThrowProfToggle();
+              }
+            }}
+            className="rounded-full p-0.5 text-slate-500 hover:text-emerald-500 dark:text-slate-400 dark:hover:text-emerald-300 cursor-pointer"
           >
             {savingThrowProficient ? (
               <CheckCircle2 className="w-4 h-4" />
             ) : (
               <Circle className="w-4 h-4" />
             )}
-          </button>
+          </div>
           <span className="font-medium text-slate-800 dark:text-slate-100">
             Saving Throw
           </span>
@@ -323,13 +343,21 @@ export const AbilityCard: React.FC<AbilityCardProps> = ({
             className="w-10 rounded-md border border-slate-300 bg-white px-1 py-0.5 text-right text-[0.7rem] text-slate-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-50"
             placeholder="+0"
           />
-          <button
-            type="button"
+          <div
+            role="button"
+            tabIndex={0}
             onClick={(e) => {
               e.stopPropagation();
               cycleSaveMode();
             }}
-            className="rounded-full p-0.5 text-slate-500 hover:text-emerald-500 dark:text-slate-400 dark:hover:text-emerald-300"
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                e.stopPropagation();
+                cycleSaveMode();
+              }
+            }}
+            className="rounded-full p-0.5 text-slate-500 hover:text-emerald-500 dark:text-slate-400 dark:hover:text-emerald-300 cursor-pointer"
           >
             {saveSettings.mode === "normal" && (
               <ChevronsUpDown className="w-4 h-4" />
@@ -340,7 +368,7 @@ export const AbilityCard: React.FC<AbilityCardProps> = ({
             {saveSettings.mode === "disadvantage" && (
               <ChevronDown className="w-4 h-4" />
             )}
-          </button>
+          </div>
           <span className="font-mono text-sm font-semibold text-slate-900 dark:text-slate-50">
             {getModifierDisplay(
               getSavingThrowModifier(character, ability, proficiencyBonus) +
@@ -384,16 +412,24 @@ export const AbilityCard: React.FC<AbilityCardProps> = ({
                 className="flex w-full items-center justify-between rounded-lg px-2 py-1.5 text-left hover:bg-slate-50 dark:hover:bg-slate-800"
               >
                 <div className="flex items-center gap-2">
-                  <button
-                    type="button"
+                  <div
+                    role="button"
+                    tabIndex={0}
                     onClick={(e) => {
                       e.stopPropagation();
                       handleSkillProfCycle(skillName);
                     }}
-                    className="rounded-full p-0.5 text-slate-500 hover:text-emerald-500 dark:text-slate-400 dark:hover:text-emerald-300"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleSkillProfCycle(skillName);
+                      }
+                    }}
+                    className="rounded-full p-0.5 text-slate-500 hover:text-emerald-500 dark:text-slate-400 dark:hover:text-emerald-300 cursor-pointer"
                   >
                     {profIcon}
-                  </button>
+                  </div>
                   <span className="text-slate-800 dark:text-slate-100">
                     {formatSkillName(skillName)}
                   </span>
@@ -412,13 +448,21 @@ export const AbilityCard: React.FC<AbilityCardProps> = ({
                     className="w-10 rounded-md border border-slate-300 bg-white px-1 py-0.5 text-right text-[0.7rem] text-slate-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-50"
                     placeholder="+0"
                   />
-                  <button
-                    type="button"
+                  <div
+                    role="button"
+                    tabIndex={0}
                     onClick={(e) => {
                       e.stopPropagation();
                       cycleSkillMode(skillName);
                     }}
-                    className="rounded-full p-0.5 text-slate-500 hover:text-emerald-500 dark:text-slate-400 dark:hover:text-emerald-300"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        cycleSkillMode(skillName);
+                      }
+                    }}
+                    className="rounded-full p-0.5 text-slate-500 hover:text-emerald-500 dark:text-slate-400 dark:hover:text-emerald-300 cursor-pointer"
                   >
                     {settings.mode === "normal" && (
                       <ChevronsUpDown className="w-4 h-4" />
@@ -429,7 +473,7 @@ export const AbilityCard: React.FC<AbilityCardProps> = ({
                     {settings.mode === "disadvantage" && (
                       <ChevronDown className="w-4 h-4" />
                     )}
-                  </button>
+                  </div>
                   <span className="font-mono text-sm font-semibold text-slate-900 dark:text-slate-50">
                     {getModifierDisplay(totalMod)}
                   </span>

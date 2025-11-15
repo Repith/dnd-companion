@@ -149,7 +149,10 @@ export class ItemService {
   /**
    * Create a new item
    */
-  async create(createDto: CreateItemDto): Promise<ItemResponseDto> {
+  async create(
+    createDto: CreateItemDto,
+    userId: string,
+  ): Promise<ItemResponseDto> {
     this.validateItemProperties(createDto);
 
     const item = await this.prisma.item.create({
@@ -166,7 +169,9 @@ export class ItemService {
         ...(createDto.description !== undefined && {
           description: createDto.description,
         }),
-      },
+        creatorId: userId,
+        visibility: "PUBLIC",
+      } as any,
     });
 
     return this.mapToResponseDto(item);
@@ -175,12 +180,17 @@ export class ItemService {
   /**
    * Find all items with optional filtering
    */
-  async findAll(filters?: {
-    type?: ItemType;
-    rarity?: Rarity;
-    search?: string;
-  }): Promise<ItemResponseDto[]> {
-    const where: any = {};
+  async findAll(
+    userId: string,
+    filters?: {
+      type?: ItemType;
+      rarity?: Rarity;
+      search?: string;
+    },
+  ): Promise<ItemResponseDto[]> {
+    const where: any = {
+      OR: [{ visibility: "PUBLIC" }, { creatorId: userId }],
+    };
 
     if (filters?.type) {
       where.type = filters.type;
@@ -191,10 +201,12 @@ export class ItemService {
     }
 
     if (filters?.search) {
-      where.OR = [
-        { name: { contains: filters.search, mode: "insensitive" } },
-        { description: { contains: filters.search, mode: "insensitive" } },
-      ];
+      where.AND = {
+        OR: [
+          { name: { contains: filters.search, mode: "insensitive" } },
+          { description: { contains: filters.search, mode: "insensitive" } },
+        ],
+      };
     }
 
     const items = await this.prisma.item.findMany({
@@ -208,12 +220,17 @@ export class ItemService {
   /**
    * Find a single item by ID
    */
-  async findOne(id: string): Promise<ItemResponseDto> {
+  async findOne(id: string, userId: string): Promise<ItemResponseDto> {
     const item = await this.prisma.item.findUnique({
       where: { id },
     });
 
     if (!item) {
+      throw new NotFoundException("Item not found");
+    }
+
+    const itemAny = item as any;
+    if (itemAny.visibility !== "PUBLIC" && itemAny.creatorId !== userId) {
       throw new NotFoundException("Item not found");
     }
 
@@ -223,7 +240,11 @@ export class ItemService {
   /**
    * Update an item
    */
-  async update(id: string, updateDto: UpdateItemDto): Promise<ItemResponseDto> {
+  async update(
+    id: string,
+    updateDto: UpdateItemDto,
+    userId: string,
+  ): Promise<ItemResponseDto> {
     this.validateItemProperties(updateDto);
 
     // Check if item exists
@@ -232,6 +253,11 @@ export class ItemService {
     });
 
     if (!existingItem) {
+      throw new NotFoundException("Item not found");
+    }
+
+    const itemAny = existingItem as any;
+    if (itemAny.visibility !== "PUBLIC" && itemAny.creatorId !== userId) {
       throw new NotFoundException("Item not found");
     }
 
@@ -259,12 +285,17 @@ export class ItemService {
   /**
    * Delete an item
    */
-  async remove(id: string): Promise<void> {
+  async remove(id: string, userId: string): Promise<void> {
     const item = await this.prisma.item.findUnique({
       where: { id },
     });
 
     if (!item) {
+      throw new NotFoundException("Item not found");
+    }
+
+    const itemAny = item as any;
+    if (itemAny.visibility !== "PUBLIC" && itemAny.creatorId !== userId) {
       throw new NotFoundException("Item not found");
     }
 

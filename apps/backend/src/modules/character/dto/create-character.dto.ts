@@ -169,6 +169,10 @@ export class CreateCharacterDto {
   subrace?: string;
 
   @IsOptional()
+  @IsEnum(CharacterClass)
+  class?: CharacterClass;
+
+  @IsOptional()
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => Object)
@@ -275,4 +279,8 @@ export class CreateCharacterDto {
   @IsOptional()
   @IsString()
   campaignId?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  isNPC?: boolean;
 }

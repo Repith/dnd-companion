@@ -11,6 +11,10 @@ import {
   QuestEventHandler,
   LevelUpEventHandler,
   DeathEventHandler,
+  SkillProficiencyAddedEventHandler,
+  QuestFinishedEventHandler,
+  ExperienceGainedEventHandler,
+  LevelUpDomainEventHandler,
 } from "./event-handlers";
 
 @Module({
@@ -26,6 +30,11 @@ import {
     QuestEventHandler,
     LevelUpEventHandler,
     DeathEventHandler,
+    // CQRS domain event handlers
+    SkillProficiencyAddedEventHandler,
+    QuestFinishedEventHandler,
+    ExperienceGainedEventHandler,
+    LevelUpDomainEventHandler,
   ],
   controllers: [EventsController],
   exports: [EventBusService, EventLoggingService],

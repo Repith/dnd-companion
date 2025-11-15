@@ -289,6 +289,7 @@ export interface CharacterResponseDto {
   lootTable?: any;
   knownSpells: string[];
   preparedSpells: string[];
+  avatarUrl?: string;
   createdAt: Date;
   updatedAt: Date;
 }

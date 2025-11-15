@@ -95,4 +95,18 @@ export const sessionApi = {
     );
     return response.data;
   },
+
+  // Roll dice in a session
+  rollDice: async (
+    sessionId: string,
+    rollData: {
+      notation: string;
+      result: number;
+      label?: string;
+      characterId?: string;
+      individualResults?: number[];
+    },
+  ): Promise<void> => {
+    await api.post(`/sessions/${sessionId}/rolls`, rollData);
+  },
 };

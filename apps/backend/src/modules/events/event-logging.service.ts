@@ -42,7 +42,7 @@ export class EventLoggingService implements OnModuleInit {
         actorId: event.actorId ?? null,
         targetId: event.targetId ?? null,
         payload: event.payload || {},
-        sessionId: event.sessionId!,
+        sessionId: event.sessionId ?? null,
       };
 
       await this.prisma.gameEvent.create({
@@ -57,7 +57,6 @@ export class EventLoggingService implements OnModuleInit {
       });
     } catch (error) {
       this.logger.error(`Failed to log event: ${event.type}`, error);
-      // Don't throw - logging failures shouldn't break the application
     }
   }
 
@@ -98,11 +97,14 @@ export class EventLoggingService implements OnModuleInit {
       }
     }
 
+    const limit = query.limit ? Number(query.limit) : 50;
+    const offset = query.offset ? Number(query.offset) : 0;
+
     const events = await this.prisma.gameEvent.findMany({
       where,
       orderBy: { timestamp: "desc" },
-      take: query.limit || 50,
-      skip: query.offset || 0,
+      take: limit,
+      skip: offset,
       include: {
         actor: {
           select: { id: true, name: true },
@@ -121,8 +123,8 @@ export class EventLoggingService implements OnModuleInit {
     return {
       events,
       total,
-      limit: query.limit || 50,
-      offset: query.offset || 0,
+      limit,
+      offset,
     };
   }
 

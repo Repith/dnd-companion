@@ -1,6 +1,6 @@
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { jest } from "@jest/globals";
-import CharacterBuilder from "../CharacterBuilder";
+import CharacterBuilder from "../character-builder/CharacterBuilder";
 
 // Mock the API
 jest.mock("../../lib/api/character", () => ({

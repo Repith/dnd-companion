@@ -10,7 +10,7 @@ export interface EventResponseDto {
   timestamp: Date;
   actorId: string | null;
   targetId: string | null;
-  sessionId: string;
+  sessionId: string | null;
   payload: JsonValue | null;
 }
 

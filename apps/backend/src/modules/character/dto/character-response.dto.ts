@@ -237,6 +237,9 @@ export class CharacterResponseDto {
   preparedSpells!: string[];
 
   @Expose()
+  avatarUrl?: string;
+
+  @Expose()
   createdAt!: Date;
 
   @Expose()

@@ -21,7 +21,7 @@ export class EventResponseDto {
   payload!: any;
 
   @Expose()
-  sessionId!: string;
+  sessionId!: string | null;
 
   constructor(partial: Partial<EventResponseDto>) {
     Object.assign(this, partial);

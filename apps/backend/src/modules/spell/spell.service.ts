@@ -55,7 +55,10 @@ export class SpellService {
   /**
    * Create a new spell
    */
-  async create(createDto: CreateSpellDto): Promise<SpellResponseDto> {
+  async create(
+    createDto: CreateSpellDto,
+    userId: string,
+  ): Promise<SpellResponseDto> {
     this.validateSpellData(createDto);
 
     // Check if spell with same name already exists
@@ -87,7 +90,9 @@ export class SpellService {
         ...(createDto.higherLevel !== undefined && {
           higherLevel: createDto.higherLevel,
         }),
-      },
+        creatorId: userId,
+        visibility: "PUBLIC",
+      } as any,
     });
 
     return this.mapToResponseDto(spell);
@@ -96,13 +101,18 @@ export class SpellService {
   /**
    * Find all spells with optional filtering
    */
-  async findAll(filters?: {
-    level?: number;
-    school?: SpellSchool;
-    class?: string;
-    search?: string;
-  }): Promise<SpellResponseDto[]> {
-    const where: any = {};
+  async findAll(
+    userId: string,
+    filters?: {
+      level?: number;
+      school?: SpellSchool;
+      class?: string;
+      search?: string;
+    },
+  ): Promise<SpellResponseDto[]> {
+    const where: any = {
+      OR: [{ visibility: "PUBLIC" }, { creatorId: userId }],
+    };
 
     if (filters?.level !== undefined) {
       where.level = filters.level;
@@ -119,10 +129,12 @@ export class SpellService {
     }
 
     if (filters?.search) {
-      where.OR = [
-        { name: { contains: filters.search, mode: "insensitive" } },
-        { description: { contains: filters.search, mode: "insensitive" } },
-      ];
+      where.AND = {
+        OR: [
+          { name: { contains: filters.search, mode: "insensitive" } },
+          { description: { contains: filters.search, mode: "insensitive" } },
+        ],
+      };
     }
 
     const spells = await this.prisma.spell.findMany({
@@ -136,12 +148,17 @@ export class SpellService {
   /**
    * Find a single spell by ID
    */
-  async findOne(id: string): Promise<SpellResponseDto> {
+  async findOne(id: string, userId: string): Promise<SpellResponseDto> {
     const spell = await this.prisma.spell.findUnique({
       where: { id },
     });
 
     if (!spell) {
+      throw new NotFoundException("Spell not found");
+    }
+
+    const spellAny = spell as any;
+    if (spellAny.visibility !== "PUBLIC" && spellAny.creatorId !== userId) {
       throw new NotFoundException("Spell not found");
     }
 
@@ -154,6 +171,7 @@ export class SpellService {
   async update(
     id: string,
     updateDto: UpdateSpellDto,
+    userId: string,
   ): Promise<SpellResponseDto> {
     this.validateSpellData(updateDto);
 
@@ -163,6 +181,11 @@ export class SpellService {
     });
 
     if (!existingSpell) {
+      throw new NotFoundException("Spell not found");
+    }
+
+    const spellAny = existingSpell as any;
+    if (spellAny.visibility !== "PUBLIC" && spellAny.creatorId !== userId) {
       throw new NotFoundException("Spell not found");
     }
 
@@ -208,12 +231,17 @@ export class SpellService {
   /**
    * Delete a spell
    */
-  async remove(id: string): Promise<void> {
+  async remove(id: string, userId: string): Promise<void> {
     const spell = await this.prisma.spell.findUnique({
       where: { id },
     });
 
     if (!spell) {
+      throw new NotFoundException("Spell not found");
+    }
+
+    const spellAny = spell as any;
+    if (spellAny.visibility !== "PUBLIC" && spellAny.creatorId !== userId) {
       throw new NotFoundException("Spell not found");
     }
 

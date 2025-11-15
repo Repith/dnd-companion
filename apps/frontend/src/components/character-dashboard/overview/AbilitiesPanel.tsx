@@ -7,7 +7,7 @@ import { HeroicInspirationCard } from "./HeroicInspirationCard";
 interface AbilitiesPanelProps {
   character: CharacterResponseDto;
   proficiencyBonus: number;
-  onUpdate?: (updates: Partial<CharacterResponseDto>) => void;
+  onUpdate: (updates: Partial<CharacterResponseDto>) => void;
 }
 
 const ABILITIES = [

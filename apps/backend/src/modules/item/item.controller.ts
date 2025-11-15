@@ -9,10 +9,12 @@ import {
   Query,
   UseGuards,
   BadRequestException,
+  Request,
 } from "@nestjs/common";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { ItemService } from "./item.service";
 import { CreateItemDto, UpdateItemDto, ItemType, Rarity } from "./dto";
+import { AuthenticatedRequest } from "../../common/types";
 
 @Controller("items")
 export class ItemController {
@@ -20,9 +22,12 @@ export class ItemController {
 
   @Post()
   @UseGuards(JwtAuthGuard)
-  create(@Body() createItemDto: CreateItemDto) {
+  create(
+    @Body() createItemDto: CreateItemDto,
+    @Request() req: AuthenticatedRequest,
+  ) {
     try {
-      return this.itemService.create(createItemDto);
+      return this.itemService.create(createItemDto, req.user.id);
     } catch (error) {
       throw new BadRequestException(
         error instanceof Error ? error.message : "Failed to create item",
@@ -31,7 +36,9 @@ export class ItemController {
   }
 
   @Get()
+  @UseGuards(JwtAuthGuard)
   findAll(
+    @Request() req: AuthenticatedRequest,
     @Query("type") type?: ItemType,
     @Query("rarity") rarity?: Rarity,
     @Query("search") search?: string,
@@ -40,19 +47,24 @@ export class ItemController {
     if (type) filters.type = type;
     if (rarity) filters.rarity = rarity;
     if (search) filters.search = search;
-    return this.itemService.findAll(filters);
+    return this.itemService.findAll(req.user.id, filters);
   }
 
   @Get(":id")
-  findOne(@Param("id") id: string) {
-    return this.itemService.findOne(id);
+  @UseGuards(JwtAuthGuard)
+  findOne(@Param("id") id: string, @Request() req: AuthenticatedRequest) {
+    return this.itemService.findOne(id, req.user.id);
   }
 
   @Patch(":id")
   @UseGuards(JwtAuthGuard)
-  update(@Param("id") id: string, @Body() updateItemDto: UpdateItemDto) {
+  update(
+    @Param("id") id: string,
+    @Body() updateItemDto: UpdateItemDto,
+    @Request() req: AuthenticatedRequest,
+  ) {
     try {
-      return this.itemService.update(id, updateItemDto);
+      return this.itemService.update(id, updateItemDto, req.user.id);
     } catch (error) {
       throw new BadRequestException(
         error instanceof Error ? error.message : "Failed to update item",
@@ -62,7 +74,7 @@ export class ItemController {
 
   @Delete(":id")
   @UseGuards(JwtAuthGuard)
-  remove(@Param("id") id: string) {
-    return this.itemService.remove(id);
+  remove(@Param("id") id: string, @Request() req: AuthenticatedRequest) {
+    return this.itemService.remove(id, req.user.id);
   }
 }

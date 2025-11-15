@@ -11,15 +11,22 @@ import {
   BadRequestException,
   Put,
 } from "@nestjs/common";
+import { CommandBus } from "@nestjs/cqrs";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { CharacterService } from "./character.service";
-import { CreateCharacterDto, UpdateCharacterDto } from "./dto";
+import { CreateCharacterDto, UpdateCharacterDto, SkillName } from "./dto";
 import { AuthenticatedRequest } from "../../common/types";
+import { AddSkillProficiencyCommand } from "./commands/add-skill-proficiency.command";
+import { GainExperienceCommand } from "./commands/gain-experience.command";
+import { UpdateCharacterLevelCommand } from "./commands/update-character-level.command";
 
 @Controller("characters")
 @UseGuards(JwtAuthGuard)
 export class CharacterController {
-  constructor(private readonly characterService: CharacterService) {}
+  constructor(
+    private readonly characterService: CharacterService,
+    private readonly commandBus: CommandBus,
+  ) {}
 
   @Post()
   create(
@@ -38,6 +45,12 @@ export class CharacterController {
   @Get()
   findAll(@Request() req: AuthenticatedRequest) {
     return this.characterService.findAll(req.user.id);
+  }
+
+  @Get("demo")
+  @UseGuards() // Override class-level guard to make this endpoint public
+  findDemoCharacters() {
+    return this.characterService.findDemoCharacters();
   }
 
   @Get(":id")
@@ -149,6 +162,67 @@ export class CharacterController {
     } catch (error) {
       throw new BadRequestException(
         error instanceof Error ? error.message : "Failed to update spell slots",
+      );
+    }
+  }
+
+  @Post(":id/skills/add-proficiency")
+  addSkillProficiency(
+    @Param("id") id: string,
+    @Body() body: { skill: SkillName; proficient: boolean; expertise: boolean },
+    @Request() req: AuthenticatedRequest,
+  ) {
+    try {
+      return this.commandBus.execute(
+        new AddSkillProficiencyCommand(
+          id,
+          body.skill,
+          body.proficient,
+          body.expertise,
+          req.user.id,
+        ),
+      );
+    } catch (error) {
+      throw new BadRequestException(
+        error instanceof Error
+          ? error.message
+          : "Failed to add skill proficiency",
+      );
+    }
+  }
+
+  @Post(":id/experience/gain")
+  gainExperience(
+    @Param("id") id: string,
+    @Body() body: { experienceGained: number },
+    @Request() req: AuthenticatedRequest,
+  ) {
+    try {
+      return this.commandBus.execute(
+        new GainExperienceCommand(id, body.experienceGained, req.user.id),
+      );
+    } catch (error) {
+      throw new BadRequestException(
+        error instanceof Error ? error.message : "Failed to gain experience",
+      );
+    }
+  }
+
+  @Post(":id/level/update")
+  updateCharacterLevel(
+    @Param("id") id: string,
+    @Body() body: { newLevel: number },
+    @Request() req: AuthenticatedRequest,
+  ) {
+    try {
+      return this.commandBus.execute(
+        new UpdateCharacterLevelCommand(id, body.newLevel, req.user.id),
+      );
+    } catch (error) {
+      throw new BadRequestException(
+        error instanceof Error
+          ? error.message
+          : "Failed to update character level",
       );
     }
   }

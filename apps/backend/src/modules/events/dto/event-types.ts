@@ -12,7 +12,7 @@ export interface BaseEvent {
   type: EventType;
   timestamp?: Date;
   actorId?: string;
-  targetId?: string;
+  targetId?: string | undefined;
   sessionId?: string;
   payload?: Record<string, any>;
 }
@@ -79,6 +79,18 @@ export interface QuestUpdatedEvent extends BaseEvent {
 }
 
 /**
+ * Quest finished event
+ */
+export interface QuestFinishedEvent extends BaseEvent {
+  type: "QUEST_FINISHED";
+  payload: {
+    questId: string;
+    experienceReward: number;
+    loot: any[];
+  };
+}
+
+/**
  * Level up event
  */
 export interface LevelUpEvent extends BaseEvent {
@@ -100,6 +112,43 @@ export interface DeathEvent extends BaseEvent {
 }
 
 /**
+ * Skill proficiency added event
+ */
+export interface SkillProficiencyAddedEvent extends BaseEvent {
+  type: "SKILL_PROFICIENCY_ADDED";
+  payload: {
+    skill: string;
+    proficient: boolean;
+    expertise: boolean;
+  };
+}
+
+/**
+ * Experience gained event
+ */
+export interface ExperienceGainedEvent extends BaseEvent {
+  type: "EXPERIENCE_GAINED";
+  payload: {
+    experienceGained: number;
+    totalExperience: number;
+  };
+}
+
+/**
+ * Dice roll event
+ */
+export interface RollEvent extends BaseEvent {
+  type: "DICE_ROLL";
+  payload: {
+    notation: string;
+    result: number;
+    label?: string;
+    characterId?: string;
+    individualResults: number[];
+  };
+}
+
+/**
  * Union type of all game events
  */
 export type GameEvent =
@@ -108,8 +157,12 @@ export type GameEvent =
   | ItemGivenEvent
   | SpellCastEvent
   | QuestUpdatedEvent
+  | QuestFinishedEvent
   | LevelUpEvent
-  | DeathEvent;
+  | DeathEvent
+  | SkillProficiencyAddedEvent
+  | ExperienceGainedEvent
+  | RollEvent;
 
 /**
  * Event handler function type

@@ -28,10 +28,10 @@ export default function CharacterBasicInfoStep({
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="mb-4 text-xl font-semibold text-gray-900">
+        <h2 className="mb-4 text-xl font-semibold text-gray-900 dark:text-white">
           Basic Information
         </h2>
-        <p className="mb-6 text-gray-600">
+        <p className="mb-6 text-gray-600 dark:text-gray-400">
           Start by giving your character a name and choosing their fundamental
           traits.
         </p>
@@ -41,7 +41,7 @@ export default function CharacterBasicInfoStep({
       <div>
         <label
           htmlFor="name"
-          className="block mb-2 text-sm font-medium text-gray-700"
+          className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300"
         >
           Character Name *
         </label>
@@ -49,7 +49,7 @@ export default function CharacterBasicInfoStep({
           {...register("name")}
           type="text"
           id="name"
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white dark:border-gray-600"
           placeholder="Enter character name"
         />
         {errors.name && (
@@ -61,14 +61,14 @@ export default function CharacterBasicInfoStep({
       <div>
         <label
           htmlFor="race"
-          className="block mb-2 text-sm font-medium text-gray-700"
+          className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300"
         >
           Race *
         </label>
         <select
           {...register("race")}
           id="race"
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white dark:border-gray-600"
         >
           <option value="">Select a race</option>
           {RACE_OPTIONS.map((race) => (
@@ -90,7 +90,7 @@ export default function CharacterBasicInfoStep({
         <div>
           <label
             htmlFor="subrace"
-            className="block mb-2 text-sm font-medium text-gray-700"
+            className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300"
           >
             Subrace
           </label>
@@ -98,7 +98,7 @@ export default function CharacterBasicInfoStep({
             {...register("subrace")}
             type="text"
             id="subrace"
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white dark:border-gray-600"
             placeholder="e.g., High Elf, Wood Elf"
           />
         </div>
@@ -108,14 +108,14 @@ export default function CharacterBasicInfoStep({
       <div>
         <label
           htmlFor="class"
-          className="block mb-2 text-sm font-medium text-gray-700"
+          className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300"
         >
           Class *
         </label>
         <select
           {...register("class")}
           id="class"
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white dark:border-gray-600"
         >
           <option value="">Select a class</option>
           {CLASS_OPTIONS.map((characterClass) => (
@@ -136,7 +136,7 @@ export default function CharacterBasicInfoStep({
       <div>
         <label
           htmlFor="level"
-          className="block mb-2 text-sm font-medium text-gray-700"
+          className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300"
         >
           Level *
         </label>
@@ -146,7 +146,7 @@ export default function CharacterBasicInfoStep({
           id="level"
           min="1"
           max="20"
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white dark:border-gray-600"
         />
         {errors.level && (
           <p className="mt-1 text-sm text-red-600">{errors.level.message}</p>
@@ -157,7 +157,7 @@ export default function CharacterBasicInfoStep({
       <div>
         <label
           htmlFor="background"
-          className="block mb-2 text-sm font-medium text-gray-700"
+          className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300"
         >
           Background
         </label>
@@ -165,7 +165,7 @@ export default function CharacterBasicInfoStep({
           {...register("background")}
           type="text"
           id="background"
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white dark:border-gray-600"
           placeholder="e.g., Noble, Criminal, Entertainer"
         />
       </div>
@@ -174,14 +174,14 @@ export default function CharacterBasicInfoStep({
       <div>
         <label
           htmlFor="alignment"
-          className="block mb-2 text-sm font-medium text-gray-700"
+          className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300"
         >
           Alignment
         </label>
         <select
           {...register("alignment")}
           id="alignment"
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white dark:border-gray-600"
         >
           <option value="">Select alignment</option>
           {ALIGNMENT_OPTIONS.map((alignment) => (

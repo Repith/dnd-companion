@@ -14,6 +14,7 @@ import { GeneratorModule } from "./modules/generator/generator.module";
 import { DMZoneModule } from "./modules/dm-zone/dm-zone.module";
 import { DiceRollModule } from "./modules/dice-roll/dice-roll.module";
 import { PrismaModule } from "./common/prisma/prisma.module";
+import { CqrsModule } from "./modules/cqrs/cqrs.module";
 
 @Module({
   imports: [
@@ -35,6 +36,7 @@ import { PrismaModule } from "./common/prisma/prisma.module";
     GeneratorModule,
     DMZoneModule,
     DiceRollModule,
+    CqrsModule,
   ],
 })
 export class AppModule {}

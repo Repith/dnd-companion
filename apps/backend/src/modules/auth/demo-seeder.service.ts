@@ -1,3 +1,4 @@
+2;
 import { Injectable, Logger } from "@nestjs/common";
 import { PrismaService } from "../../common/prisma/prisma.service";
 import {
@@ -197,6 +198,7 @@ export class DemoSeederService {
         data: {
           ...charWithoutScores,
           ownerId: userId,
+          isDemo: true,
           abilityScores: {
             create: abilityScores,
           },
