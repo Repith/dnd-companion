@@ -266,6 +266,7 @@ describe("EventLoggingService", () => {
       await service.queryEvents({ startDate, endDate });
 
       const callArgs = mockPrismaService.gameEvent.findMany.mock.calls[0][0];
+      expect(callArgs.where.timestamp).toBeDefined();
       expect(callArgs.where.timestamp.gte).toBe(startDate);
       expect(callArgs.where.timestamp.lte).toBe(endDate);
     });
@@ -282,6 +283,10 @@ describe("EventLoggingService", () => {
         { sessionId: "session-1", _count: { id: 8 } },
       ];
 
+      const mockEventsByCampaign = [
+        { campaignId: "campaign-1", _count: { id: 8 } },
+      ];
+
       const mockRecentEvents = [
         { type: EventType.DAMAGE_APPLIED, actor: { name: "User 1" } },
       ];
@@ -289,7 +294,8 @@ describe("EventLoggingService", () => {
       mockPrismaService.gameEvent.count.mockResolvedValue(10);
       mockPrismaService.gameEvent.groupBy
         .mockResolvedValueOnce(mockEventsByType)
-        .mockResolvedValueOnce(mockEventsBySession);
+        .mockResolvedValueOnce(mockEventsBySession)
+        .mockResolvedValueOnce(mockEventsByCampaign);
       mockPrismaService.gameEvent.findMany.mockResolvedValue(mockRecentEvents);
 
       const result = await service.getEventStats("session-1");
@@ -298,6 +304,7 @@ describe("EventLoggingService", () => {
       expect(result.eventsByType[EventType.DAMAGE_APPLIED]).toBe(5);
       expect(result.eventsByType[EventType.HEALING_RECEIVED]).toBe(3);
       expect(result.eventsBySession["session-1"]).toBe(8);
+      expect(result.eventsByCampaign["campaign-1"]).toBe(8);
       expect(result.recentEvents).toHaveLength(1);
     });
 
@@ -305,12 +312,14 @@ describe("EventLoggingService", () => {
       mockPrismaService.gameEvent.count.mockResolvedValue(5);
       mockPrismaService.gameEvent.groupBy
         .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([])
         .mockResolvedValueOnce([]);
       mockPrismaService.gameEvent.findMany.mockResolvedValue([]);
 
       const result = await service.getEventStats(undefined, undefined, true);
 
       expect(result.totalEvents).toBe(5);
+      expect(result.eventsByCampaign).toEqual({});
     });
   });
 });

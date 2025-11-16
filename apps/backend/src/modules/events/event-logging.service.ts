@@ -151,19 +151,25 @@ export class EventLoggingService implements OnModuleInit {
     if (campaignId) where.campaignId = campaignId;
     if (global !== undefined) where.global = global;
 
-    const [totalEvents, eventsByType, eventsBySession] = await Promise.all([
-      this.prisma.gameEvent.count({ where }),
-      this.prisma.gameEvent.groupBy({
-        by: ["type"],
-        where,
-        _count: { type: true },
-      }),
-      this.prisma.gameEvent.groupBy({
-        by: ["sessionId"],
-        where,
-        _count: { id: true },
-      }),
-    ]);
+    const [totalEvents, eventsByType, eventsBySession, eventsByCampaign] =
+      await Promise.all([
+        this.prisma.gameEvent.count({ where }),
+        this.prisma.gameEvent.groupBy({
+          by: ["type"],
+          where,
+          _count: { type: true },
+        }),
+        this.prisma.gameEvent.groupBy({
+          by: ["sessionId"],
+          where,
+          _count: { id: true },
+        }),
+        this.prisma.gameEvent.groupBy({
+          by: ["campaignId"],
+          where,
+          _count: { id: true },
+        }),
+      ]);
 
     const recentEvents = await this.prisma.gameEvent.findMany({
       where,
@@ -188,6 +194,16 @@ export class EventLoggingService implements OnModuleInit {
           item._count.id
         ) {
           acc[item.sessionId] = item._count.id;
+        }
+        return acc;
+      }, {} as Record<string, number>),
+      eventsByCampaign: eventsByCampaign.reduce((acc, item) => {
+        if (
+          item.campaignId &&
+          typeof item._count === "object" &&
+          item._count.id
+        ) {
+          acc[item.campaignId] = item._count.id;
         }
         return acc;
       }, {} as Record<string, number>),

@@ -151,6 +151,42 @@ export interface RollEvent extends BaseEvent {
 }
 
 /**
+ * User logged in event
+ */
+export interface UserLoggedInEvent extends BaseEvent {
+  type: "USER_LOGGED_IN";
+  payload: {
+    userId: string;
+    username: string;
+    email: string;
+  };
+}
+
+/**
+ * User logged out event
+ */
+export interface UserLoggedOutEvent extends BaseEvent {
+  type: "USER_LOGGED_OUT";
+  payload: {
+    userId: string;
+    username: string;
+    email: string;
+  };
+}
+
+/**
+ * Error occurred event
+ */
+export interface ErrorOccurredEvent extends BaseEvent {
+  type: "ERROR_OCCURRED";
+  payload: {
+    error: string;
+    stack?: string;
+    context?: Record<string, any>;
+  };
+}
+
+/**
  * Union type of all game events
  */
 export type GameEvent =
@@ -164,7 +200,10 @@ export type GameEvent =
   | DeathEvent
   | SkillProficiencyAddedEvent
   | ExperienceGainedEvent
-  | RollEvent;
+  | RollEvent
+  | UserLoggedInEvent
+  | UserLoggedOutEvent
+  | ErrorOccurredEvent;
 
 /**
  * Event handler function type

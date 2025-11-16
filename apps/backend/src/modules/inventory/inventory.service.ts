@@ -202,7 +202,7 @@ export class InventoryService {
         itemId: addItemDto.itemId,
         quantity: quantity,
       },
-      sessionId: campaignId,
+      campaignId: campaignId,
     };
     await this.eventBus.publish(itemEvent);
 

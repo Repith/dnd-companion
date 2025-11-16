@@ -1,4 +1,3 @@
-// character-dashboard/overview/AbilitiesPanel.tsx
 import { AbilityName, CharacterResponseDto } from "@/types/character";
 import { AbilityCard } from "./AbilityCard";
 import { ProficiencyBonusCard } from "./ProficiencyBonusCard";
@@ -26,24 +25,33 @@ export const AbilitiesPanel: React.FC<AbilitiesPanelProps> = ({
 }) => {
   return (
     <section className="space-y-4">
-      <ProficiencyBonusCard proficiencyBonus={proficiencyBonus} />
+      <div className="grid gap-4 lg:grid-cols-[2fr_1fr]">
+        <div className="space-y-3">
+          <h2 className="text-sm font-semibold tracking-wide uppercase text-slate-500 dark:text-slate-300">
+            Abilities
+          </h2>
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+            {ABILITIES.map((ability) => (
+              <AbilityCard
+                key={ability}
+                character={character}
+                ability={ability}
+                proficiencyBonus={proficiencyBonus}
+                onUpdate={onUpdate}
+              />
+            ))}
+          </div>
+        </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        {ABILITIES.map((ability) => (
-          <AbilityCard
-            key={ability}
-            character={character}
-            ability={ability}
-            proficiencyBonus={proficiencyBonus}
-            onUpdate={onUpdate}
+        <div className="space-y-3">
+          <ProficiencyBonusCard proficiencyBonus={proficiencyBonus} />
+
+          <HeroicInspirationCard
+            inspiration={character.inspiration}
+            onToggle={() => onUpdate?.({ inspiration: !character.inspiration })}
           />
-        ))}
+        </div>
       </div>
-
-      <HeroicInspirationCard
-        inspiration={character.inspiration}
-        onToggle={() => onUpdate?.({ inspiration: !character.inspiration })}
-      />
     </section>
   );
 };

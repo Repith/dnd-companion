@@ -9,11 +9,13 @@ import { JwtAuthGuard } from "./guards/jwt-auth.guard";
 import { RolesGuard } from "./guards/roles.guard";
 import { DemoSeederService } from "./demo-seeder.service";
 import { PrismaModule } from "../../common/prisma/prisma.module";
+import { EventsModule } from "../events/events.module";
 
 @Module({
   imports: [
     forwardRef(() => UserModule),
     PrismaModule,
+    EventsModule,
     PassportModule,
     JwtModule.register({
       secret: process.env.JWT_SECRET || "dev-secret",

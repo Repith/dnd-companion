@@ -1,18 +1,54 @@
+import { EventType } from "./event-types";
+
 // Re-export shared event types
 export { EventType } from "./event-types";
 export type {
   BaseEvent,
+  // Session events
+  SessionCreatedEvent,
+  SessionUpdatedEvent,
+  SessionDeletedEvent,
+  CombatStartedEvent,
+  CombatEndedEvent,
+  // Dice roll events
+  RollEvent,
+  CheckRollEvent,
+  // Character events
+  CharacterCreatedEvent,
+  CharacterUpdatedEvent,
+  CharacterDeletedEvent,
   DamageAppliedEvent,
   HealingReceivedEvent,
-  ItemGivenEvent,
+  TempHPGainedEvent,
+  DeathEvent,
+  LevelUpEvent,
+  ExperienceGainedEvent,
+  SkillProficiencyAddedEvent,
+  // Spell events
   SpellCastEvent,
+  SpellLearntEvent,
+  SpellPreparedEvent,
+  SpellUnpreparedEvent,
+  // Inventory events
+  ItemGivenEvent,
+  ItemUsedEvent,
+  ItemEquippedEvent,
+  ItemUnequippedEvent,
+  // Quest and campaign events
+  QuestCreatedEvent,
   QuestUpdatedEvent,
   QuestFinishedEvent,
-  LevelUpEvent,
-  DeathEvent,
-  SkillProficiencyAddedEvent,
-  ExperienceGainedEvent,
-  RollEvent,
+  QuestRewardClaimedEvent,
+  CampaignCreatedEvent,
+  CampaignUpdatedEvent,
+  // Note events
+  NoteAddedEvent,
+  NoteUpdatedEvent,
+  NoteDeletedEvent,
+  // System events
+  UserLoggedInEvent,
+  UserLoggedOutEvent,
+  ErrorOccurredEvent,
   GameEvent,
   EventHandler,
   EventFilter,
@@ -22,6 +58,8 @@ export interface EventQueryDto {
   limit?: number;
   offset?: number;
   sessionId?: string;
+  campaignId?: string;
+  global?: boolean;
   actorId?: string;
   targetId?: string;
   type?: EventType;
@@ -36,14 +74,17 @@ export interface EventResponseDto {
   actorId: string | null;
   targetId: string | null;
   payload: any;
-  sessionId: string;
+  sessionId: string | null;
+  campaignId: string | null;
+  global: boolean | null;
 }
 
 export interface EventStatsDto {
   totalEvents: number;
   eventsByType: Record<EventType, number>;
   eventsBySession: Record<string, number>;
-  recentActivity: EventResponseDto[];
+  eventsByCampaign: Record<string, number>;
+  recentEvents: EventResponseDto[];
 }
 
 export interface EventsResponseDto {

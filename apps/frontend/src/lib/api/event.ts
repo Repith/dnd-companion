@@ -11,10 +11,28 @@ export const eventApi = {
   },
 
   // Get event statistics
-  getStats: async (sessionId?: string): Promise<EventStatsDto> => {
+  getStats: async (params?: {
+    sessionId?: string;
+    campaignId?: string;
+    global?: boolean;
+  }): Promise<EventStatsDto> => {
     const response = await api.get<EventStatsDto>("/events/stats", {
-      params: sessionId ? { sessionId } : undefined,
+      params,
     });
+    return response.data;
+  },
+
+  // Get events for a specific campaign
+  getCampaignEvents: async (
+    campaignId: string,
+    query?: Omit<EventQueryDto, "campaignId">,
+  ): Promise<EventsResponseDto> => {
+    const response = await api.get<EventsResponseDto>(
+      `/events/campaign/${campaignId}`,
+      {
+        params: query,
+      },
+    );
     return response.data;
   },
 

@@ -417,7 +417,7 @@ CREATE TYPE "GeneratorType" AS ENUM ('NPC', 'LOCATION', 'CAMPAIGN', 'ITEM', 'SPE
 CREATE TYPE "GeneratorStatus" AS ENUM ('PENDING', 'IN_PROGRESS', 'COMPLETED', 'FAILED');
 
 -- Event types
-CREATE TYPE "EventType" AS ENUM ('DAMAGE_APPLIED', 'HEALING_RECEIVED', 'ITEM_GIVEN', 'SPELL_CAST', 'QUEST_UPDATED', 'QUEST_FINISHED', 'LEVEL_UP', 'DEATH', 'SKILL_PROFICIENCY_ADDED', 'EXPERIENCE_GAINED', 'DICE_ROLL');
+CREATE TYPE "EventType" AS ENUM ('DAMAGE_APPLIED', 'HEALING_RECEIVED', 'ITEM_GIVEN', 'SPELL_CAST', 'QUEST_UPDATED', 'QUEST_FINISHED', 'LEVEL_UP', 'DEATH', 'SKILL_PROFICIENCY_ADDED', 'EXPERIENCE_GAINED', 'DICE_ROLL', 'USER_LOGGED_IN', 'USER_LOGGED_OUT', 'ERROR_OCCURRED');
 
 -- Quest statuses
 CREATE TYPE "QuestStatus" AS ENUM ('NOT_STARTED', 'IN_PROGRESS', 'COMPLETED', 'FAILED');
@@ -557,6 +557,7 @@ The application provides Server-Sent Events (SSE) endpoints for real-time event 
 - `GET /events/session/:sessionId/stream` - Streams events for a specific session
 - `GET /events/character/:characterId/stream` - Streams events where the character is the target
 - `GET /events/campaign/:campaignId/stream` - Streams all events for a campaign
+- `GET /events/global/stream` - Streams global system events
 
 These endpoints use the EventBus to provide live updates to connected clients, enabling real-time dashboards and notifications.
 

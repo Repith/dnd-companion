@@ -134,7 +134,7 @@ export class QuestService {
           newStatus: updateDto.status,
           experienceReward: quest.experienceReward,
         },
-        sessionId: quest.campaignId,
+        campaignId: quest.campaignId,
       };
       await this.eventBus.publish(questEvent);
     }
@@ -292,7 +292,7 @@ export class QuestService {
           experienceGained: quest.experienceReward,
           totalExperience: oldExperience + quest.experienceReward,
         },
-        sessionId: quest.campaignId,
+        campaignId: quest.campaignId,
       };
       await this.eventBus.publish(experienceEvent);
     }
@@ -307,7 +307,7 @@ export class QuestService {
           experienceReward: quest.experienceReward,
           loot: [], // Could be enhanced to include actual loot
         },
-        sessionId: quest.campaignId,
+        campaignId: quest.campaignId,
       };
       await this.eventBus.publish(questFinishedEvent);
     }

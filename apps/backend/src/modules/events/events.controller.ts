@@ -43,9 +43,35 @@ export class EventsController {
   @Get("stats")
   async getEventStats(
     @Query("sessionId") sessionId?: string,
+    @Query("campaignId") campaignId?: string,
+    @Query("global") global?: boolean,
   ): Promise<EventStatsDto> {
-    this.logger.debug("Getting event stats", { sessionId });
-    return this.eventLoggingService.getEventStats(sessionId);
+    this.logger.debug("Getting event stats", { sessionId, campaignId, global });
+    return this.eventLoggingService.getEventStats(
+      sessionId,
+      campaignId,
+      global,
+    );
+  }
+
+  /**
+   * Get events for a specific campaign
+   */
+  @Get("campaign/:campaignId")
+  async getCampaignEvents(
+    @Param("campaignId") campaignId: string,
+    @Query() query: Omit<EventQueryDto, "campaignId">,
+  ): Promise<{
+    events: EventResponseDto[];
+    total: number;
+    limit: number;
+    offset: number;
+  }> {
+    this.logger.debug("Getting campaign events", { campaignId, ...query });
+    return this.eventLoggingService.queryEvents({
+      ...query,
+      campaignId,
+    });
   }
 
   /**
@@ -127,6 +153,18 @@ export class EventsController {
     this.logger.debug("SSE subscription for campaign events", { campaignId });
     return this.eventBusService
       .getEventObservable(undefined, { campaignId })
+      .pipe(map((event) => ({ data: event })));
+  }
+
+  /**
+   * SSE endpoint for real-time global events
+   */
+  @Sse("global/stream")
+  @UseGuards(JwtAuthGuard)
+  getGlobalEventsSSE(): Observable<{ data: any }> {
+    this.logger.debug("SSE subscription for global events");
+    return this.eventBusService
+      .getEventObservable(undefined, { global: true })
       .pipe(map((event) => ({ data: event })));
   }
 }

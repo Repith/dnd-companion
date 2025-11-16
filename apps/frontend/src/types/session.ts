@@ -1,3 +1,5 @@
+import { EventResponseDto } from "./event";
+
 export interface CreateSessionDto {
   date?: Date;
   notes?: string;
@@ -16,16 +18,6 @@ export interface SessionResponseDto {
   notes: string | null;
   playerCharacterIds: string[];
   createdAt: Date;
-}
-
-export interface EventResponseDto {
-  id: string;
-  type: string;
-  timestamp: Date;
-  actorId: string | null;
-  targetId: string | null;
-  payload: any;
-  sessionId: string;
 }
 
 export interface HPAdjustmentDto {

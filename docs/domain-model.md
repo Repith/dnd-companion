@@ -174,7 +174,7 @@ Represents a single game session within a campaign; stores logs and events.
 Represents an event that occurred during gameplay. Events are published through the unified EventBus system and can be scoped at different levels: session, campaign, or global.
 
 - **id** – UUID.
-- **type** – standardized event type from the unified EventType enum (e.g., `DAMAGE_APPLIED`, `HEALING_RECEIVED`, `ITEM_GIVEN`, `SPELL_CAST`, `QUEST_UPDATED`, `QUEST_FINISHED`, `LEVEL_UP`, `DEATH`, `EXPERIENCE_GAINED`, `DICE_ROLL`).
+- **type** – standardized event type from the unified EventType enum (e.g., `DAMAGE_APPLIED`, `HEALING_RECEIVED`, `ITEM_GIVEN`, `SPELL_CAST`, `QUEST_UPDATED`, `QUEST_FINISHED`, `LEVEL_UP`, `DEATH`, `EXPERIENCE_GAINED`, `DICE_ROLL`, `USER_LOGGED_IN`, `USER_LOGGED_OUT`, `ERROR_OCCURRED`).
 - **timestamp** – ISO timestamp.
 - **actorId** – id of the character or user performing the action.
 - **targetId** – id of the affected character, NPC or object.

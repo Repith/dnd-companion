@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { CharacterResponseDto } from "@/types/character";
 import { characterApi } from "@/lib/api/character";
-import { ApiError } from "@/lib/api/error-handler";
+import { useCharacterEventBus } from "@/contexts/CharacterEventBus";
 import CharacterDashboard from "@/components/character-dashboard/CharacterDashboard";
 
 export default function CharacterDetailPage() {
@@ -12,7 +12,10 @@ export default function CharacterDetailPage() {
   const id = params.id as string;
   const [character, setCharacter] = useState<CharacterResponseDto | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<ApiError | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  // Use the event bus for character updates
+  const { updateCharacter } = useCharacterEventBus();
 
   useEffect(() => {
     loadCharacter();
@@ -25,9 +28,9 @@ export default function CharacterDetailPage() {
       const data = await characterApi.getById(id);
       setCharacter(data);
     } catch (err) {
-      const apiError = err as ApiError;
-      setError(apiError);
-      console.error("Error loading character:", apiError);
+      const errorMessage = getErrorMessage(err);
+      setError(errorMessage);
+      console.error("Error loading character:", err);
     } finally {
       setLoading(false);
     }
@@ -37,12 +40,53 @@ export default function CharacterDetailPage() {
     updates: Partial<CharacterResponseDto>,
   ) => {
     try {
-      await characterApi.update(id, updates as any);
-      await loadCharacter();
-    } catch (error) {
-      console.error("Failed to update character:", error);
+      // Use event bus to update character - handles API calls and events properly
+      const updatedCharacter = await updateCharacter(id, updates as any);
+
+      // Update local state with the returned character data
+      setCharacter(updatedCharacter);
+      setError(null); // Clear any previous errors
+    } catch (err) {
+      const errorMessage = getErrorMessage(err);
+      console.error("Failed to update character:", err);
+      setError(errorMessage);
       // Optionally show error to user
     }
+  };
+
+  // Helper function to extract error messages from various error types
+  const getErrorMessage = (err: unknown): string => {
+    if (err instanceof Error) {
+      return err.message;
+    }
+    if (typeof err === "object" && err !== null) {
+      if ("message" in err && typeof err.message === "string") {
+        return err.message;
+      }
+      if ("error" in err && typeof err.error === "string") {
+        return err.error;
+      }
+      // Handle nested error objects from backend
+      if (
+        "response" in err &&
+        err.response &&
+        typeof err.response === "object"
+      ) {
+        if (
+          "data" in err.response &&
+          err.response.data &&
+          typeof err.response.data === "object"
+        ) {
+          if ("message" in err.response.data) {
+            const message = err.response.data.message;
+            if (typeof message === "string") {
+              return message;
+            }
+          }
+        }
+      }
+    }
+    return "An unexpected error occurred";
   };
 
   if (loading) {
@@ -57,15 +101,13 @@ export default function CharacterDetailPage() {
   if (error) {
     return (
       <div className="py-12 text-center">
-        <div className="mb-4 text-red-600">{error.message}</div>
-        {error.retryable && (
-          <button
-            onClick={loadCharacter}
-            className="px-4 py-2 text-white bg-blue-600 rounded-md hover:bg-blue-700"
-          >
-            Try Again
-          </button>
-        )}
+        <div className="mb-4 text-red-600">{error}</div>
+        <button
+          onClick={loadCharacter}
+          className="px-4 py-2 text-white bg-blue-600 rounded-md hover:bg-blue-700"
+        >
+          Try Again
+        </button>
       </div>
     );
   }

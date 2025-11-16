@@ -530,33 +530,97 @@ Generate content using AI or templates.
 
 ### Events
 
-#### GET /events/campaign/:campaignId
+#### GET /events
 
-Get event feed for a campaign.
+Get events with filtering and pagination.
 
 **Query Parameters:**
 
+- `type` (string): Filter by event type
+- `actorId` (string): Filter by actor
+- `targetId` (string): Filter by target
+- `sessionId` (string): Filter by session
+- `campaignId` (string): Filter by campaign
+- `global` (boolean): Filter global events
+- `startDate` (string): Start date filter
+- `endDate` (string): End date filter
 - `limit` (number): Number of events to return (default: 50)
-- `before` (string): Get events before this timestamp
+- `offset` (number): Pagination offset
+
+#### GET /events/stats
+
+Get event statistics.
+
+**Query Parameters:**
+
+- `sessionId` (string): Filter by session
+- `campaignId` (string): Filter by campaign
+- `global` (boolean): Filter global events
 
 **Response:**
 
 ```json
-[
-  {
-    "id": "uuid",
-    "type": "DAMAGE_APPLIED",
-    "timestamp": "2024-01-01T12:00:00Z",
-    "actorId": "character-uuid",
-    "targetId": "monster-uuid",
-    "payload": {
-      "damage": 15,
-      "damageType": "slashing"
-    },
-    "sessionId": "session-uuid"
-  }
-]
+{
+  "totalEvents": 150,
+  "eventsByType": {
+    "DAMAGE_APPLIED": 45,
+    "HEALING_RECEIVED": 23
+  },
+  "eventsBySession": {
+    "session-uuid": 67
+  },
+  "eventsByCampaign": {
+    "campaign-uuid": 89
+  },
+  "recentEvents": [...]
+}
 ```
+
+#### GET /events/campaign/:campaignId
+
+Get event feed for a campaign.
+
+**Parameters:**
+
+- `campaignId` (string): Campaign UUID
+
+**Query Parameters:** Same as GET /events
+
+#### GET /events/session/:sessionId
+
+Get event feed for a session.
+
+**Parameters:**
+
+- `sessionId` (string): Session UUID
+
+**Query Parameters:** Same as GET /events
+
+#### GET /events/character/:characterId
+
+Get event feed for a character.
+
+**Parameters:**
+
+- `characterId` (string): Character UUID
+
+**Query Parameters:** Same as GET /events
+
+#### GET /events/session/:sessionId/stream
+
+SSE endpoint for real-time session events.
+
+#### GET /events/character/:characterId/stream
+
+SSE endpoint for real-time character events.
+
+#### GET /events/campaign/:campaignId/stream
+
+SSE endpoint for real-time campaign events.
+
+#### GET /events/global/stream
+
+SSE endpoint for real-time global events.
 
 ## Error Codes
 
@@ -577,24 +641,38 @@ API endpoints are rate limited to prevent abuse:
 - Unauthenticated requests: 100 per hour
 - Demo login: 10 per hour per IP
 
-## WebSocket Events
+## Server-Sent Events (SSE)
 
-Real-time updates are available via WebSocket connection:
+Real-time updates are available via Server-Sent Events:
 
 ```javascript
-const ws = new WebSocket("ws://localhost:3002/events");
-
 // Listen for campaign events
-ws.onmessage = (event) => {
+const eventSource = new EventSource("/events/campaign/campaign-uuid/stream");
+eventSource.onmessage = (event) => {
   const data = JSON.parse(event.data);
   console.log("Event:", data.type, data.payload);
+};
+
+// Listen for global events
+const globalSource = new EventSource("/events/global/stream");
+globalSource.onmessage = (event) => {
+  const data = JSON.parse(event.data);
+  console.log("Global Event:", data.type, data.payload);
 };
 ```
 
 Supported event types:
 
-- `CHARACTER_UPDATED`
-- `CAMPAIGN_UPDATED`
-- `QUEST_COMPLETED`
-- `SESSION_STARTED`
-- `INVENTORY_CHANGED`
+- `DAMAGE_APPLIED`
+- `HEALING_RECEIVED`
+- `ITEM_GIVEN`
+- `SPELL_CAST`
+- `QUEST_UPDATED`
+- `QUEST_FINISHED`
+- `LEVEL_UP`
+- `DEATH`
+- `EXPERIENCE_GAINED`
+- `DICE_ROLL`
+- `USER_LOGGED_IN`
+- `USER_LOGGED_OUT`
+- `ERROR_OCCURRED`

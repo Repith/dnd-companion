@@ -1,6 +1,22 @@
 interface CharacterTabsProps {
-  activeTab: "overview" | "spells" | "features" | "rolls";
-  onTabChange: (tab: "overview" | "spells" | "features" | "rolls") => void;
+  activeTab:
+    | "overview"
+    | "spells"
+    | "features"
+    | "rolls"
+    | "inventory"
+    | "notes"
+    | "comparison";
+  onTabChange: (
+    tab:
+      | "overview"
+      | "spells"
+      | "features"
+      | "rolls"
+      | "inventory"
+      | "notes"
+      | "comparison",
+  ) => void;
 }
 
 const TABS: {
@@ -11,6 +27,9 @@ const TABS: {
   { id: "spells", label: "Spells" },
   { id: "features", label: "Features & Traits" },
   { id: "rolls", label: "Roll History" },
+  { id: "inventory", label: "Inventory" },
+  { id: "notes", label: "Notes" },
+  { id: "comparison", label: "Comparison" },
 ];
 
 export const CharacterTabs: React.FC<CharacterTabsProps> = ({

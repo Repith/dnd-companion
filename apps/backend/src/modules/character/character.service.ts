@@ -887,7 +887,7 @@ export class CharacterService {
             damage,
             damageType: "unknown", // Could be enhanced to track damage types
           },
-          sessionId: updatedCharacter.campaignId, // Use campaign as session for now
+          campaignId: updatedCharacter.campaignId,
           ...(userId && { actorId: userId }),
         };
         await this.eventBus.publish(damageEvent);
@@ -900,7 +900,7 @@ export class CharacterService {
           payload: {
             healing,
           },
-          sessionId: updatedCharacter.campaignId,
+          campaignId: updatedCharacter.campaignId,
           ...(userId && { actorId: userId }),
         };
         await this.eventBus.publish(healingEvent);
@@ -914,7 +914,7 @@ export class CharacterService {
           payload: {
             cause: "damage",
           },
-          sessionId: updatedCharacter.campaignId,
+          campaignId: updatedCharacter.campaignId,
           ...(userId && { actorId: userId }),
         };
         await this.eventBus.publish(deathEvent);
@@ -930,7 +930,7 @@ export class CharacterService {
           newLevel: updateDto.level,
           oldLevel: existingCharacter.level,
         },
-        sessionId: updatedCharacter.campaignId,
+        campaignId: updatedCharacter.campaignId,
         ...(userId && { actorId: userId }),
       };
       await this.eventBus.publish(levelUpEvent);
@@ -950,7 +950,7 @@ export class CharacterService {
           experienceGained,
           totalExperience: updateDto.experiencePoints,
         },
-        sessionId: updatedCharacter.campaignId,
+        campaignId: updatedCharacter.campaignId,
         ...(userId && { actorId: userId }),
       };
       await this.eventBus.publish(experienceEvent);

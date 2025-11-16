@@ -78,6 +78,8 @@ describe("EventsController", () => {
 
       expect(mockEventLoggingService.getEventStats).toHaveBeenCalledWith(
         sessionId,
+        undefined,
+        undefined,
       );
       expect(result).toBe(mockStats);
     });
@@ -205,6 +207,33 @@ describe("EventsController", () => {
           expect(mockEventBusService.getEventObservable).toHaveBeenCalledWith(
             undefined,
             { campaignId },
+          );
+          done();
+        },
+        error: done,
+      });
+    });
+  });
+
+  describe("getGlobalEventsSSE", () => {
+    it("should return SSE observable for global events", (done) => {
+      const mockEvent = {
+        type: EventType.USER_LOGGED_IN,
+        global: true,
+        payload: { userId: "user-1", username: "testuser" },
+      };
+
+      const mockObservable = of(mockEvent);
+      mockEventBusService.getEventObservable.mockReturnValue(mockObservable);
+
+      const result = controller.getGlobalEventsSSE();
+
+      result.subscribe({
+        next: (value) => {
+          expect(value).toEqual({ data: mockEvent });
+          expect(mockEventBusService.getEventObservable).toHaveBeenCalledWith(
+            undefined,
+            { global: true },
           );
           done();
         },

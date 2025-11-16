@@ -6,6 +6,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { CharacterProvider } from "@/contexts/CharacterContext";
 import { RollHistoryProvider } from "@/contexts/RollHistoryContext";
 import DiceRollerProvider from "@/contexts/dice-roller/provider";
+import { CharacterEventBusProvider } from "@/contexts/CharacterEventBus";
 
 // Create a client
 const queryClient = new QueryClient();
@@ -19,11 +20,13 @@ export function Providers({ children }: ProvidersProps) {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
         <AuthProvider>
-          <CharacterProvider>
-            <RollHistoryProvider>
-              <DiceRollerProvider>{children}</DiceRollerProvider>
-            </RollHistoryProvider>
-          </CharacterProvider>
+          <CharacterEventBusProvider>
+            <CharacterProvider>
+              <RollHistoryProvider>
+                <DiceRollerProvider>{children}</DiceRollerProvider>
+              </RollHistoryProvider>
+            </CharacterProvider>
+          </CharacterEventBusProvider>
         </AuthProvider>
       </ThemeProvider>
     </QueryClientProvider>

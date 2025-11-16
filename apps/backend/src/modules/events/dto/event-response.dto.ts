@@ -11,6 +11,8 @@ export interface EventResponseDto {
   actorId: string | null;
   targetId: string | null;
   sessionId: string | null;
+  campaignId: string | null;
+  global: boolean | null;
   payload: JsonValue | null;
 }
 
@@ -22,6 +24,8 @@ export interface EventQueryDto {
   actorId?: string;
   targetId?: string;
   sessionId?: string;
+  campaignId?: string;
+  global?: boolean;
   startDate?: Date;
   endDate?: Date;
   limit?: number;
@@ -35,5 +39,6 @@ export interface EventStatsDto {
   totalEvents: number;
   eventsByType: Record<EventType, number>;
   eventsBySession: Record<string, number>;
+  eventsByCampaign: Record<string, number>;
   recentEvents: EventResponseDto[];
 }

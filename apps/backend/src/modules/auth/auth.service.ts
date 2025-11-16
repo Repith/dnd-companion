@@ -4,6 +4,12 @@ import { UserService } from "../user/user.service";
 import { LoginUserDto } from "../user/dto/login-user.dto";
 import { Role } from "../../common/types";
 import { DemoSeederService } from "./demo-seeder.service";
+import { EventBusService } from "../events/event-bus.service";
+import {
+  EventType,
+  UserLoggedInEvent,
+  UserLoggedOutEvent,
+} from "../events/dto";
 
 export interface JwtPayload {
   sub: string;
@@ -19,6 +25,7 @@ export class AuthService {
     private userService: UserService,
     private jwtService: JwtService,
     private demoSeederService: DemoSeederService,
+    private eventBus: EventBusService,
   ) {}
 
   async validateUser(email: string, password: string): Promise<any> {
@@ -63,6 +70,18 @@ export class AuthService {
       email: user.email,
       roles: user.roles,
     };
+
+    // Publish user logged in event
+    const loginEvent: UserLoggedInEvent = {
+      type: EventType.USER_LOGGED_IN,
+      global: true,
+      payload: {
+        userId: user.id,
+        username: user.username || "",
+        email: user.email,
+      },
+    };
+    await this.eventBus.publish(loginEvent);
 
     this.logger.log(`User logged in successfully`, {
       userId: user.id,
