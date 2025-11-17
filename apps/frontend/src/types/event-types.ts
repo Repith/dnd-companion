@@ -1,3 +1,11 @@
+import {
+  EventType as DomainEventType,
+  CharacterCreated,
+  HitPointsChanged,
+  ItemEquipped,
+  SpellCast,
+} from "@dnd-companion/domain";
+
 /**
  * Standardized event types for DnD Companion
  * Shared between backend and frontend

@@ -3,6 +3,8 @@ import { JwtService } from "@nestjs/jwt";
 import { AuthService } from "./auth.service";
 import { UserService } from "../user/user.service";
 import { LoginUserDto } from "../user/dto";
+import { DemoSeederService } from "./demo-seeder.service";
+import { EventBusService } from "../events/event-bus.service";
 
 describe("AuthService", () => {
   let service: AuthService;
@@ -19,6 +21,14 @@ describe("AuthService", () => {
     sign: jest.fn(),
   };
 
+  const mockDemoSeederService = {
+    seedDemoData: jest.fn(),
+  };
+
+  const mockEventBusService = {
+    publish: jest.fn(),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -30,6 +40,14 @@ describe("AuthService", () => {
         {
           provide: JwtService,
           useValue: mockJwtService,
+        },
+        {
+          provide: DemoSeederService,
+          useValue: mockDemoSeederService,
+        },
+        {
+          provide: EventBusService,
+          useValue: mockEventBusService,
         },
       ],
     }).compile();

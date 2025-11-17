@@ -1,7 +1,7 @@
-export enum OwnerType {
-  CHARACTER = "CHARACTER",
-  SESSION = "SESSION",
-}
+import { OwnerType } from "@dnd-companion/domain";
+
+// Re-export for backward compatibility
+export { OwnerType };
 
 export enum InventoryOperation {
   ADD_ITEM = "ADD_ITEM",

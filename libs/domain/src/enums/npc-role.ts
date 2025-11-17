@@ -1,0 +1,7 @@
+export enum NPCRole {
+  MERCHANT = "MERCHANT",
+  ALLY = "ALLY",
+  ENEMY = "ENEMY",
+  QUEST_GIVER = "QUEST_GIVER",
+  VILLAIN = "VILLAIN",
+}

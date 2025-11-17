@@ -31,6 +31,9 @@ describe("CharacterService", () => {
     spell: {
       findUnique: jest.fn(),
     },
+    item: {
+      findFirst: jest.fn(),
+    },
   };
 
   const mockEventBusService = {

@@ -1,56 +1,19 @@
-import {
-  Injectable,
-  NotFoundException,
-  BadRequestException,
-} from "@nestjs/common";
-import { PrismaService } from "../../common/prisma/prisma.service";
-import {
-  CreateSpellDto,
-  UpdateSpellDto,
-  SpellResponseDto,
-  SpellSchool,
-} from "./dto";
-import { Spell } from "@prisma/client";
+import { Injectable, BadRequestException } from "@nestjs/common";
+import { CommandBus, QueryBus } from "@nestjs/cqrs";
+import { CreateSpellDto, UpdateSpellDto, SpellResponseDto } from "./dto";
+import { SpellSchool } from "@dnd-companion/domain";
+import { CreateSpellCommand } from "@dnd-companion/application";
+import { UpdateSpellCommand } from "@dnd-companion/application";
+import { DeleteSpellCommand } from "@dnd-companion/application";
+import { GetSpellQuery } from "@dnd-companion/application";
+import { GetSpellsQuery } from "@dnd-companion/application";
 
 @Injectable()
 export class SpellService {
-  constructor(private prisma: PrismaService) {}
-
-  /**
-   * Validate spell data
-   */
-  private validateSpellData(
-    data: Partial<CreateSpellDto | UpdateSpellDto>,
-  ): void {
-    // Validate level
-    if (data.level !== undefined && (data.level < 0 || data.level > 9)) {
-      throw new BadRequestException("Spell level must be between 0 and 9");
-    }
-
-    // Validate classes array
-    if (data.classes && data.classes.length === 0) {
-      throw new BadRequestException("Spell must have at least one class");
-    }
-
-    // Validate duration structure
-    if (data.duration) {
-      if (!data.duration.duration) {
-        throw new BadRequestException(
-          "Spell duration must have a duration field",
-        );
-      }
-    }
-
-    // Validate components
-    if (data.components) {
-      const components = data.components;
-      if (!components.verbal && !components.somatic && !components.material) {
-        throw new BadRequestException(
-          "Spell must have at least one component type",
-        );
-      }
-    }
-  }
+  constructor(
+    private readonly commandBus: CommandBus,
+    private readonly queryBus: QueryBus,
+  ) {}
 
   /**
    * Create a new spell
@@ -59,43 +22,23 @@ export class SpellService {
     createDto: CreateSpellDto,
     userId: string,
   ): Promise<SpellResponseDto> {
-    this.validateSpellData(createDto);
+    const command = new CreateSpellCommand(
+      createDto.name,
+      createDto.level,
+      createDto.duration,
+      createDto.classes,
+      createDto.school,
+      createDto.castingTime,
+      createDto.range,
+      createDto.components,
+      createDto.description,
+      createDto.higherLevel,
+      userId,
+    );
 
-    // Check if spell with same name already exists
-    const existingSpell = await this.prisma.spell.findFirst({
-      where: { name: createDto.name },
-    });
-
-    if (existingSpell) {
-      throw new BadRequestException("Spell with this name already exists");
-    }
-
-    const spell = await this.prisma.spell.create({
-      data: {
-        name: createDto.name,
-        level: createDto.level,
-        ...(createDto.school !== undefined && { school: createDto.school }),
-        ...(createDto.castingTime !== undefined && {
-          castingTime: createDto.castingTime,
-        }),
-        ...(createDto.range !== undefined && { range: createDto.range }),
-        ...(createDto.components !== undefined && {
-          components: createDto.components,
-        }),
-        duration: createDto.duration,
-        classes: createDto.classes,
-        ...(createDto.description !== undefined && {
-          description: createDto.description,
-        }),
-        ...(createDto.higherLevel !== undefined && {
-          higherLevel: createDto.higherLevel,
-        }),
-        creatorId: userId,
-        visibility: "PUBLIC",
-      } as any,
-    });
-
-    return this.mapToResponseDto(spell);
+    const spellId = await this.commandBus.execute(command);
+    const query = new GetSpellQuery(spellId, userId);
+    return this.queryBus.execute(query);
   }
 
   /**
@@ -110,59 +53,23 @@ export class SpellService {
       search?: string;
     },
   ): Promise<SpellResponseDto[]> {
-    const where: any = {
-      OR: [{ visibility: "PUBLIC" }, { creatorId: userId }],
-    };
+    const query = new GetSpellsQuery(
+      filters?.level,
+      filters?.school,
+      filters?.class,
+      filters?.search,
+      userId,
+    );
 
-    if (filters?.level !== undefined) {
-      where.level = filters.level;
-    }
-
-    if (filters?.school) {
-      where.school = filters.school;
-    }
-
-    if (filters?.class) {
-      where.classes = {
-        has: filters.class,
-      };
-    }
-
-    if (filters?.search) {
-      where.AND = {
-        OR: [
-          { name: { contains: filters.search, mode: "insensitive" } },
-          { description: { contains: filters.search, mode: "insensitive" } },
-        ],
-      };
-    }
-
-    const spells = await this.prisma.spell.findMany({
-      where,
-      orderBy: [{ level: "asc" }, { name: "asc" }],
-    });
-
-    return spells.map((spell: Spell) => this.mapToResponseDto(spell));
+    return this.queryBus.execute(query);
   }
 
   /**
    * Find a single spell by ID
    */
   async findOne(id: string, userId: string): Promise<SpellResponseDto> {
-    const spell = await this.prisma.spell.findUnique({
-      where: { id },
-    });
-
-    if (!spell) {
-      throw new NotFoundException("Spell not found");
-    }
-
-    const spellAny = spell as any;
-    if (spellAny.visibility !== "PUBLIC" && spellAny.creatorId !== userId) {
-      throw new NotFoundException("Spell not found");
-    }
-
-    return this.mapToResponseDto(spell);
+    const query = new GetSpellQuery(id, userId);
+    return this.queryBus.execute(query);
   }
 
   /**
@@ -173,122 +80,31 @@ export class SpellService {
     updateDto: UpdateSpellDto,
     userId: string,
   ): Promise<SpellResponseDto> {
-    this.validateSpellData(updateDto);
+    const command = new UpdateSpellCommand(
+      id,
+      updateDto.name,
+      updateDto.level,
+      updateDto.school,
+      updateDto.castingTime,
+      updateDto.range,
+      updateDto.components,
+      updateDto.duration,
+      updateDto.classes,
+      updateDto.description,
+      updateDto.higherLevel,
+      userId,
+    );
 
-    // Check if spell exists
-    const existingSpell = await this.prisma.spell.findUnique({
-      where: { id },
-    });
-
-    if (!existingSpell) {
-      throw new NotFoundException("Spell not found");
-    }
-
-    const spellAny = existingSpell as any;
-    if (spellAny.visibility !== "PUBLIC" && spellAny.creatorId !== userId) {
-      throw new NotFoundException("Spell not found");
-    }
-
-    // Check for name conflicts if name is being updated
-    if (updateDto.name && updateDto.name !== existingSpell.name) {
-      const nameConflict = await this.prisma.spell.findFirst({
-        where: { name: updateDto.name },
-      });
-      if (nameConflict) {
-        throw new BadRequestException("Spell with this name already exists");
-      }
-    }
-
-    const updatedSpell = await this.prisma.spell.update({
-      where: { id },
-      data: {
-        ...(updateDto.name !== undefined && { name: updateDto.name }),
-        ...(updateDto.level !== undefined && { level: updateDto.level }),
-        ...(updateDto.school !== undefined && { school: updateDto.school }),
-        ...(updateDto.castingTime !== undefined && {
-          castingTime: updateDto.castingTime,
-        }),
-        ...(updateDto.range !== undefined && { range: updateDto.range }),
-        ...(updateDto.components !== undefined && {
-          components: updateDto.components,
-        }),
-        ...(updateDto.duration !== undefined && {
-          duration: updateDto.duration,
-        }),
-        ...(updateDto.classes !== undefined && { classes: updateDto.classes }),
-        ...(updateDto.description !== undefined && {
-          description: updateDto.description,
-        }),
-        ...(updateDto.higherLevel !== undefined && {
-          higherLevel: updateDto.higherLevel,
-        }),
-      },
-    });
-
-    return this.mapToResponseDto(updatedSpell);
+    await this.commandBus.execute(command);
+    const query = new GetSpellQuery(id, userId);
+    return this.queryBus.execute(query);
   }
 
   /**
    * Delete a spell
    */
   async remove(id: string, userId: string): Promise<void> {
-    const spell = await this.prisma.spell.findUnique({
-      where: { id },
-    });
-
-    if (!spell) {
-      throw new NotFoundException("Spell not found");
-    }
-
-    const spellAny = spell as any;
-    if (spellAny.visibility !== "PUBLIC" && spellAny.creatorId !== userId) {
-      throw new NotFoundException("Spell not found");
-    }
-
-    // Check if spell is being used by any characters
-    const charactersUsingSpell = await this.prisma.character.count({
-      where: {
-        OR: [{ knownSpells: { has: id } }, { preparedSpells: { has: id } }],
-      },
-    });
-
-    if (charactersUsingSpell > 0) {
-      throw new BadRequestException(
-        "Cannot delete spell that is currently known or prepared by characters",
-      );
-    }
-
-    await this.prisma.spell.delete({
-      where: { id },
-    });
-  }
-
-  /**
-   * Import spells from external API
-   */
-  async importFromSRD(): Promise<{ imported: number; skipped: number }> {
-    // This will be implemented later
-    throw new BadRequestException("SRD import not yet implemented");
-  }
-
-  /**
-   * Map Prisma spell to response DTO
-   */
-  private mapToResponseDto(spell: any): SpellResponseDto {
-    return {
-      id: spell.id,
-      name: spell.name,
-      level: spell.level,
-      school: spell.school,
-      castingTime: spell.castingTime,
-      range: spell.range,
-      components: spell.components,
-      duration: spell.duration,
-      classes: spell.classes,
-      description: spell.description,
-      higherLevel: spell.higherLevel,
-      createdAt: spell.createdAt,
-      updatedAt: spell.updatedAt,
-    };
+    const command = new DeleteSpellCommand(id, userId);
+    await this.commandBus.execute(command);
   }
 }

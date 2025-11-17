@@ -41,6 +41,9 @@ describe("QuestService", () => {
   };
 
   beforeEach(async () => {
+    // Clear all mocks
+    jest.clearAllMocks();
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         QuestService,
@@ -99,7 +102,7 @@ describe("QuestService", () => {
           newStatus: QuestStatus.IN_PROGRESS,
           experienceReward: 100,
         },
-        sessionId: "campaign-1",
+        campaignId: "campaign-1",
       });
     });
 
@@ -169,7 +172,7 @@ describe("QuestService", () => {
           experienceGained: 100,
           totalExperience: 600,
         },
-        sessionId: "campaign-1",
+        campaignId: "campaign-1",
       });
 
       expect(mockEventBusService.publish).toHaveBeenCalledWith({
@@ -180,7 +183,7 @@ describe("QuestService", () => {
           experienceGained: 100,
           totalExperience: 400,
         },
-        sessionId: "campaign-1",
+        campaignId: "campaign-1",
       });
 
       // Should publish QUEST_FINISHED event
@@ -192,7 +195,7 @@ describe("QuestService", () => {
           experienceReward: 100,
           loot: [],
         },
-        sessionId: "campaign-1",
+        campaignId: "campaign-1",
       });
     });
 

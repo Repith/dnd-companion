@@ -1,0 +1,19 @@
+{
+    "name": "@dnd-companion/infrastructure",
+    "version": "1.0.0",
+    "main": "dist/index.js",
+    "types": "dist/index.d.ts",
+    "scripts": {
+        "build": "tsc",
+        "clean": "rimraf dist"
+    },
+    "dependencies": {
+        "@dnd-companion/domain": "^1.0.0",
+        "@dnd-companion/application": "^1.0.0",
+        "@prisma/client": "^6.19.0"
+    },
+    "devDependencies": {
+        "typescript": "^5.9.3",
+        "rimraf": "^3.0.2"
+    }
+}

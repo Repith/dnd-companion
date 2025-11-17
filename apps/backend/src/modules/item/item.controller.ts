@@ -11,23 +11,88 @@ import {
   BadRequestException,
   Request,
 } from "@nestjs/common";
+import { CommandBus, QueryBus } from "@nestjs/cqrs";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
-import { ItemService } from "./item.service";
-import { CreateItemDto, UpdateItemDto, ItemType, Rarity } from "./dto";
+import { Rarity } from "@dnd-companion/domain";
+import { CreateItemDto, UpdateItemDto, ItemType } from "./dto";
 import { AuthenticatedRequest } from "../../common/types";
+
+// Temporary inline command classes until application lib is built
+class CreateItemCommand {
+  constructor(
+    public readonly name: string,
+    public readonly type: ItemType,
+    public readonly rarity: Rarity,
+    public readonly weight: number,
+    public readonly properties?: any,
+    public readonly effects?: any,
+    public readonly source?: string,
+    public readonly description?: string,
+    public readonly userId?: string,
+  ) {}
+}
+
+class UpdateItemCommand {
+  constructor(
+    public readonly id: string,
+    public readonly name?: string,
+    public readonly type?: ItemType,
+    public readonly rarity?: Rarity,
+    public readonly weight?: number,
+    public readonly properties?: any,
+    public readonly effects?: any,
+    public readonly source?: string,
+    public readonly description?: string,
+    public readonly userId?: string,
+  ) {}
+}
+
+class DeleteItemCommand {
+  constructor(public readonly id: string, public readonly userId?: string) {}
+}
+
+class GetItemQuery {
+  constructor(public readonly id: string, public readonly userId?: string) {}
+}
+
+class GetItemsQuery {
+  constructor(
+    public readonly type?: ItemType,
+    public readonly rarity?: Rarity,
+    public readonly search?: string,
+    public readonly userId?: string,
+  ) {}
+}
 
 @Controller("items")
 export class ItemController {
-  constructor(private readonly itemService: ItemService) {}
+  constructor(
+    private readonly commandBus: CommandBus,
+    private readonly queryBus: QueryBus,
+  ) {}
 
   @Post()
   @UseGuards(JwtAuthGuard)
-  create(
+  async create(
     @Body() createItemDto: CreateItemDto,
     @Request() req: AuthenticatedRequest,
   ) {
     try {
-      return this.itemService.create(createItemDto, req.user.id);
+      const command = new CreateItemCommand(
+        createItemDto.name,
+        createItemDto.type,
+        createItemDto.rarity || Rarity.COMMON,
+        createItemDto.weight || 0,
+        createItemDto.properties,
+        createItemDto.effects,
+        createItemDto.source,
+        createItemDto.description,
+        req.user.id,
+      );
+
+      const itemId = await this.commandBus.execute(command);
+      const query = new GetItemQuery(itemId, req.user.id);
+      return this.queryBus.execute(query);
     } catch (error) {
       throw new BadRequestException(
         error instanceof Error ? error.message : "Failed to create item",
@@ -43,28 +108,41 @@ export class ItemController {
     @Query("rarity") rarity?: Rarity,
     @Query("search") search?: string,
   ) {
-    const filters: { type?: ItemType; rarity?: Rarity; search?: string } = {};
-    if (type) filters.type = type;
-    if (rarity) filters.rarity = rarity;
-    if (search) filters.search = search;
-    return this.itemService.findAll(req.user.id, filters);
+    const query = new GetItemsQuery(type, rarity, search, req.user.id);
+    return this.queryBus.execute(query);
   }
 
   @Get(":id")
   @UseGuards(JwtAuthGuard)
   findOne(@Param("id") id: string, @Request() req: AuthenticatedRequest) {
-    return this.itemService.findOne(id, req.user.id);
+    const query = new GetItemQuery(id, req.user.id);
+    return this.queryBus.execute(query);
   }
 
   @Patch(":id")
   @UseGuards(JwtAuthGuard)
-  update(
+  async update(
     @Param("id") id: string,
     @Body() updateItemDto: UpdateItemDto,
     @Request() req: AuthenticatedRequest,
   ) {
     try {
-      return this.itemService.update(id, updateItemDto, req.user.id);
+      const command = new UpdateItemCommand(
+        id,
+        updateItemDto.name,
+        updateItemDto.type,
+        updateItemDto.rarity,
+        updateItemDto.weight,
+        updateItemDto.properties,
+        updateItemDto.effects,
+        updateItemDto.source,
+        updateItemDto.description,
+        req.user.id,
+      );
+
+      await this.commandBus.execute(command);
+      const query = new GetItemQuery(id, req.user.id);
+      return this.queryBus.execute(query);
     } catch (error) {
       throw new BadRequestException(
         error instanceof Error ? error.message : "Failed to update item",
@@ -75,6 +153,7 @@ export class ItemController {
   @Delete(":id")
   @UseGuards(JwtAuthGuard)
   remove(@Param("id") id: string, @Request() req: AuthenticatedRequest) {
-    return this.itemService.remove(id, req.user.id);
+    const command = new DeleteItemCommand(id, req.user.id);
+    return this.commandBus.execute(command);
   }
 }

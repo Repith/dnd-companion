@@ -201,7 +201,7 @@ export class QuestService {
       quest.campaignId,
       userId,
     );
-    if (character.ownerId !== userId && !isUserDM) {
+    if (character.userId !== userId && !isUserDM) {
       throw new ForbiddenException(
         "You can only update progress for your own characters",
       );

@@ -39,6 +39,9 @@ describe("Event Handlers", () => {
   };
 
   beforeEach(async () => {
+    // Clear all mocks
+    jest.clearAllMocks();
+
     module = await Test.createTestingModule({
       providers: [
         {
@@ -166,7 +169,7 @@ describe("Event Handlers", () => {
 
       expect(mockPrismaService.character.update).toHaveBeenCalledWith({
         where: { id: "char-1" },
-        data: { proficiencyBonus: 3 }, // Level 3: floor((3-1)/4) + 2 = 2 + 2 = 4? Wait, let me check the calculation
+        data: { proficiencyBonus: 2 }, // Level 3: floor((3-1)/4) + 2 = 0 + 2 = 2
       });
     });
   });
@@ -265,7 +268,7 @@ describe("Event Handlers", () => {
 
       expect(mockPrismaService.character.update).toHaveBeenCalledWith({
         where: { id: "char-2" },
-        data: { experiencePoints: 1050 }, // 1000 + (3 * 50) = 1150? Wait, let me check the calculation
+        data: { experiencePoints: 1150 }, // 1000 + (3 * 50) = 1150
       });
 
       expect(mockEventBusService.publish).toHaveBeenCalledWith({

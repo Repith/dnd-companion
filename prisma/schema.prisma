@@ -215,12 +215,12 @@ model User {
   passwordHash     String
   roles            Role[]
   subscriptionTier SubscriptionTier? @default(FREE)
-  profile          Json?             
+  profile          Json?
   lastLogin        DateTime?
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
   deletedAt        DateTime?
-  characters       Character[]
+  characters       Character[]        @relation("Owner")
   createdCharacters Character[]      @relation("Creator")
   createdLocations  Location[]       @relation("Creator")
   createdSpells    Spell[]           @relation("Creator")
@@ -309,6 +309,8 @@ model Inventory {
   ownerId     String          @db.Uuid
   items       InventoryItem[]
   encumbrance Json?
+
+  @@index([ownerId])
 }
 
 model InventoryItem {
@@ -385,6 +387,7 @@ model Character {
   name              String
   race              Race
   subrace           String?
+  primaryClass      CharacterClass     @map("primaryClass") @default(FIGHTER)
   multiclasses      Multiclass[]
   level             Int                @default(1)
   background        String?
@@ -410,8 +413,8 @@ model Character {
   backstory         String?
   languages         String[]           // list of languages
   currency          Json               // { cp: 0, sp: 0, ep: 0, gp: 0, pp: 0 }
-  owner             User?              @relation(fields: [ownerId], references: [id])
-  ownerId           String?            @db.Uuid
+  user              User?              @relation("Owner", fields: [userId], references: [id])
+  userId            String?            @db.Uuid
   creator           User?              @relation("Creator", fields: [creatorId], references: [id])
   creatorId         String?            @db.Uuid
   visibility        Visibility         @default(PUBLIC)
@@ -438,7 +441,7 @@ model Character {
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
 
-  @@index([ownerId])
+  @@index([userId])
 }
 
 model Item {
@@ -515,6 +518,8 @@ model Session {
   playerCharacterIds   String[]     // list of character ids
   currentCampaign      Campaign?    @relation("CurrentSession", fields: [currentCampaignId], references: [id])
   currentCampaignId    String?      @unique @db.Uuid
+
+  @@index([campaignId])
 }
 
 model DiceRoll {

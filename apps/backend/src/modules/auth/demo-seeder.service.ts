@@ -20,7 +20,7 @@ export class DemoSeederService {
 
     // Check if demo data already exists
     const existingCharacters = await this.prisma.character.findMany({
-      where: { ownerId: userId },
+      where: { userId: userId },
     });
 
     if (existingCharacters.length > 0) {
@@ -197,7 +197,7 @@ export class DemoSeederService {
       const character = await this.prisma.character.create({
         data: {
           ...charWithoutScores,
-          ownerId: userId,
+          userId: userId,
           isDemo: true,
           abilityScores: {
             create: abilityScores,

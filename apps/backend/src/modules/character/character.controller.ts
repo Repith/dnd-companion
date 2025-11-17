@@ -11,7 +11,7 @@ import {
   BadRequestException,
   Put,
 } from "@nestjs/common";
-import { CommandBus } from "@nestjs/cqrs";
+import { CommandBus, QueryBus } from "@nestjs/cqrs";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { CharacterService } from "./character.service";
 import { CreateCharacterDto, UpdateCharacterDto, SkillName } from "./dto";
@@ -19,6 +19,7 @@ import { AuthenticatedRequest } from "../../common/types";
 import { AddSkillProficiencyCommand } from "./commands/add-skill-proficiency.command";
 import { GainExperienceCommand } from "./commands/gain-experience.command";
 import { UpdateCharacterLevelCommand } from "./commands/update-character-level.command";
+import { GetCharacterByIdQuery } from "./queries/get-character-by-id.query";
 
 @Controller("characters")
 @UseGuards(JwtAuthGuard)
@@ -26,6 +27,7 @@ export class CharacterController {
   constructor(
     private readonly characterService: CharacterService,
     private readonly commandBus: CommandBus,
+    private readonly queryBus: QueryBus,
   ) {}
 
   @Post()
@@ -55,7 +57,7 @@ export class CharacterController {
 
   @Get(":id")
   findOne(@Param("id") id: string, @Request() req: AuthenticatedRequest) {
-    return this.characterService.findOne(id, req.user.id);
+    return this.queryBus.execute(new GetCharacterByIdQuery(id, req.user.id));
   }
 
   @Patch(":id")

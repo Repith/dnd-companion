@@ -48,6 +48,9 @@ describe("InventoryService", () => {
   };
 
   beforeEach(async () => {
+    // Clear all mocks
+    jest.clearAllMocks();
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         InventoryService,
@@ -210,7 +213,7 @@ describe("InventoryService", () => {
           itemId: "item1",
           quantity: 2,
         },
-        sessionId: "campaign-1",
+        campaignId: "campaign-1",
       });
       expect(result).toBeDefined();
     });
@@ -270,7 +273,7 @@ describe("InventoryService", () => {
           itemId: "item1",
           quantity: 2,
         },
-        sessionId: "campaign-1",
+        campaignId: "campaign-1",
       });
       expect(result).toBeDefined();
     });

@@ -70,7 +70,7 @@ describe("ItemService", () => {
 
       mockPrismaService.item.create.mockResolvedValue(createdItem);
 
-      const result = await service.create(createDto);
+      const result = await service.create(createDto, "user-1");
 
       expect(mockPrismaService.item.create).toHaveBeenCalledWith({
         data: {

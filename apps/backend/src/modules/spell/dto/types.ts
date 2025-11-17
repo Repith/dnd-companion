@@ -1,13 +1,4 @@
-export enum SpellSchool {
-  ABJURATION = "ABJURATION",
-  CONJURATION = "CONJURATION",
-  DIVINATION = "DIVINATION",
-  ENCHANTMENT = "ENCHANTMENT",
-  EVOCATION = "EVOCATION",
-  ILLUSION = "ILLUSION",
-  NECROMANCY = "NECROMANCY",
-  TRANSMUTATION = "TRANSMUTATION",
-}
+export { SpellSchool } from "@dnd-companion/domain";
 
 export interface SpellComponents {
   verbal?: boolean;

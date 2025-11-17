@@ -344,7 +344,7 @@ export class CharacterService {
     const characters = await this.prisma.character.findMany({
       where: {
         OR: [
-          { ownerId: userId }, // Player characters owned by user
+          { userId }, // Player characters owned by user
           {
             AND: [
               { isNPC: true },
@@ -831,7 +831,7 @@ export class CharacterService {
       throw new NotFoundException("Character not found");
     }
 
-    if (character.ownerId && character.ownerId !== userId) {
+    if (character.userId && character.userId !== userId) {
       throw new ForbiddenException("You don't have access to this character");
     }
 

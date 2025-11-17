@@ -40,14 +40,12 @@ export default function CharacterPage() {
     if (!selectedCharacter) return;
 
     try {
-      // Transform the updates to match UpdateCharacterDto
       const transformedUpdates: any = { ...updates };
 
-      // Transform skillProficiencies if present
       if (updates.skillProficiencies) {
         transformedUpdates.skillProficiencies = updates.skillProficiencies.map(
           (sp) => ({
-            skill: sp.skill as any, // Cast to SkillName
+            skill: sp.skill as any,
             proficient: sp.proficient,
             expertise: sp.expertise,
           }),

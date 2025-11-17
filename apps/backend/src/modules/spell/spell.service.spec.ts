@@ -71,7 +71,7 @@ describe("SpellService", () => {
       mockPrismaService.spell.create.mockResolvedValue(createdSpell);
       mockPrismaService.spell.findFirst.mockResolvedValue(null);
 
-      const result = await service.create(createDto);
+      const result = await service.create(createDto, "user-1");
 
       expect(mockPrismaService.spell.create).toHaveBeenCalledWith({
         data: {
@@ -100,10 +100,10 @@ describe("SpellService", () => {
 
       mockPrismaService.spell.findFirst.mockResolvedValue({ id: "existing" });
 
-      await expect(service.create(createDto)).rejects.toThrow(
+      await expect(service.create(createDto, "user-1")).rejects.toThrow(
         BadRequestException,
       );
-      await expect(service.create(createDto)).rejects.toThrow(
+      await expect(service.create(createDto, "user-1")).rejects.toThrow(
         "Spell with this name already exists",
       );
     });
@@ -164,7 +164,7 @@ describe("SpellService", () => {
 
       mockPrismaService.spell.findMany.mockResolvedValue(spells);
 
-      const result = await service.findAll(filters);
+      const result = await service.findAll("user-1", filters);
 
       expect(mockPrismaService.spell.findMany).toHaveBeenCalledWith({
         where: { level: 1 },
@@ -189,7 +189,7 @@ describe("SpellService", () => {
 
       mockPrismaService.spell.findMany.mockResolvedValue(spells);
 
-      const result = await service.findAll(filters);
+      const result = await service.findAll("user-1", filters);
 
       expect(mockPrismaService.spell.findMany).toHaveBeenCalledWith({
         where: { classes: { has: "Wizard" } },
@@ -213,7 +213,7 @@ describe("SpellService", () => {
 
       mockPrismaService.spell.findUnique.mockResolvedValue(spell);
 
-      const result = await service.findOne("1");
+      const result = await service.findOne("1", "user-1");
 
       expect(result).toEqual(spell);
     });
@@ -221,7 +221,9 @@ describe("SpellService", () => {
     it("should throw NotFoundException if spell not found", async () => {
       mockPrismaService.spell.findUnique.mockResolvedValue(null);
 
-      await expect(service.findOne("999")).rejects.toThrow(NotFoundException);
+      await expect(service.findOne("999", "user-1")).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -250,7 +252,7 @@ describe("SpellService", () => {
       mockPrismaService.spell.findFirst.mockResolvedValue(null);
       mockPrismaService.spell.update.mockResolvedValue(updatedSpell);
 
-      const result = await service.update("1", updateDto);
+      const result = await service.update("1", updateDto, "user-1");
 
       expect(result.description).toBe(updateDto.description);
     });
@@ -258,9 +260,9 @@ describe("SpellService", () => {
     it("should throw NotFoundException if spell to update not found", async () => {
       mockPrismaService.spell.findUnique.mockResolvedValue(null);
 
-      await expect(service.update("999", { name: "Test" })).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(
+        service.update("999", { name: "Test" }, "user-1"),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -278,7 +280,7 @@ describe("SpellService", () => {
       mockPrismaService.character.count.mockResolvedValue(0);
       mockPrismaService.spell.delete.mockResolvedValue(spell);
 
-      await service.remove("1");
+      await service.remove("1", "user-1");
 
       expect(mockPrismaService.spell.delete).toHaveBeenCalledWith({
         where: { id: "1" },
@@ -297,8 +299,10 @@ describe("SpellService", () => {
       mockPrismaService.spell.findUnique.mockResolvedValue(spell);
       mockPrismaService.character.count.mockResolvedValue(1);
 
-      await expect(service.remove("1")).rejects.toThrow(BadRequestException);
-      await expect(service.remove("1")).rejects.toThrow(
+      await expect(service.remove("1", "user-1")).rejects.toThrow(
+        BadRequestException,
+      );
+      await expect(service.remove("1", "user-1")).rejects.toThrow(
         "Cannot delete spell that is currently known or prepared by characters",
       );
     });

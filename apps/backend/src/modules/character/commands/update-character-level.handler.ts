@@ -36,7 +36,7 @@ export class UpdateCharacterLevelHandler
       throw new NotFoundException("Character not found");
     }
 
-    if (character.ownerId && character.ownerId !== userId) {
+    if (character.userId && character.userId !== userId) {
       throw new BadRequestException("You don't have access to this character");
     }
 

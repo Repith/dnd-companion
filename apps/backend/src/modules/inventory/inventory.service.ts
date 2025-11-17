@@ -63,9 +63,9 @@ export class InventoryService {
     if (inventory.ownerType === "CHARACTER") {
       const character = await this.prisma.character.findUnique({
         where: { id: inventory.ownerId },
-        select: { ownerId: true },
+        select: { userId: true },
       });
-      if (!character || (userId && character.ownerId !== userId)) {
+      if (!character || (userId && character.userId !== userId)) {
         throw new ForbiddenException("You don't have access to this inventory");
       }
     }
@@ -348,14 +348,14 @@ export class InventoryService {
     // Check if character exists and user has access
     const character = await this.prisma.character.findUnique({
       where: { id: characterId },
-      select: { ownerId: true },
+      select: { userId: true },
     });
 
     if (!character) {
       throw new NotFoundException("Character not found");
     }
 
-    if (character.ownerId && character.ownerId !== userId) {
+    if (character.userId && character.userId !== userId) {
       throw new ForbiddenException("You don't have access to this character");
     }
 

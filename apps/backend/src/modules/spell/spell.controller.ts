@@ -11,40 +11,52 @@ import {
   BadRequestException,
   Request,
 } from "@nestjs/common";
+import { CommandBus, QueryBus } from "@nestjs/cqrs";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
-import { SpellService } from "./spell.service";
 import { CreateSpellDto, UpdateSpellDto, SpellSchool } from "./dto";
 import { AuthenticatedRequest } from "../../common/types";
+import {
+  CreateSpellCommand,
+  UpdateSpellCommand,
+  DeleteSpellCommand,
+  GetSpellQuery,
+  GetSpellsQuery,
+} from "@dnd-companion/application";
 
 @Controller("spells")
 export class SpellController {
-  constructor(private readonly spellService: SpellService) {}
+  constructor(
+    private readonly commandBus: CommandBus,
+    private readonly queryBus: QueryBus,
+  ) {}
 
   @Post()
   @UseGuards(JwtAuthGuard)
-  create(
+  async create(
     @Body() createSpellDto: CreateSpellDto,
     @Request() req: AuthenticatedRequest,
   ) {
     try {
-      return this.spellService.create(createSpellDto, req.user.id);
+      const command = new CreateSpellCommand(
+        createSpellDto.name,
+        createSpellDto.level,
+        createSpellDto.duration,
+        createSpellDto.classes,
+        createSpellDto.school,
+        createSpellDto.castingTime,
+        createSpellDto.range,
+        createSpellDto.components,
+        createSpellDto.description,
+        createSpellDto.higherLevel,
+        req.user.id,
+      );
+
+      const spellId = await this.commandBus.execute(command);
+      const query = new GetSpellQuery(spellId, req.user.id);
+      return this.queryBus.execute(query);
     } catch (error) {
       throw new BadRequestException(
         error instanceof Error ? error.message : "Failed to create spell",
-      );
-    }
-  }
-
-  @Post("import-srd")
-  @UseGuards(JwtAuthGuard)
-  async importFromSRD() {
-    try {
-      return await this.spellService.importFromSRD();
-    } catch (error) {
-      throw new BadRequestException(
-        error instanceof Error
-          ? error.message
-          : "Failed to import spells from SRD",
       );
     }
   }
@@ -58,42 +70,50 @@ export class SpellController {
     @Query("class") spellClass?: string,
     @Query("search") search?: string,
   ) {
-    const filters: {
-      level?: number;
-      school?: SpellSchool;
-      class?: string;
-      search?: string;
-    } = {};
+    const query = new GetSpellsQuery(
+      level ? parseInt(level, 10) : undefined,
+      school,
+      spellClass,
+      search,
+      req.user.id,
+    );
 
-    if (level) {
-      const levelNum = parseInt(level, 10);
-      if (!isNaN(levelNum)) {
-        filters.level = levelNum;
-      }
-    }
-
-    if (school) filters.school = school;
-    if (spellClass) filters.class = spellClass;
-    if (search) filters.search = search;
-
-    return this.spellService.findAll(req.user.id, filters);
+    return this.queryBus.execute(query);
   }
 
   @Get(":id")
   @UseGuards(JwtAuthGuard)
   findOne(@Param("id") id: string, @Request() req: AuthenticatedRequest) {
-    return this.spellService.findOne(id, req.user.id);
+    const query = new GetSpellQuery(id, req.user.id);
+    return this.queryBus.execute(query);
   }
 
   @Patch(":id")
   @UseGuards(JwtAuthGuard)
-  update(
+  async update(
     @Param("id") id: string,
     @Body() updateSpellDto: UpdateSpellDto,
     @Request() req: AuthenticatedRequest,
   ) {
     try {
-      return this.spellService.update(id, updateSpellDto, req.user.id);
+      const command = new UpdateSpellCommand(
+        id,
+        updateSpellDto.name,
+        updateSpellDto.level,
+        updateSpellDto.school,
+        updateSpellDto.castingTime,
+        updateSpellDto.range,
+        updateSpellDto.components,
+        updateSpellDto.duration,
+        updateSpellDto.classes,
+        updateSpellDto.description,
+        updateSpellDto.higherLevel,
+        req.user.id,
+      );
+
+      await this.commandBus.execute(command);
+      const query = new GetSpellQuery(id, req.user.id);
+      return this.queryBus.execute(query);
     } catch (error) {
       throw new BadRequestException(
         error instanceof Error ? error.message : "Failed to update spell",
@@ -104,6 +124,7 @@ export class SpellController {
   @Delete(":id")
   @UseGuards(JwtAuthGuard)
   remove(@Param("id") id: string, @Request() req: AuthenticatedRequest) {
-    return this.spellService.remove(id, req.user.id);
+    const command = new DeleteSpellCommand(id, req.user.id);
+    return this.commandBus.execute(command);
   }
 }

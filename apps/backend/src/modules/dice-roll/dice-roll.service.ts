@@ -32,11 +32,11 @@ export class DiceRollService {
 
       // Check if user has access to the character (same logic as CharacterService.findAll)
       const hasAccess =
-        character.ownerId === userId || character.campaignId !== null;
+        character.userId === userId || character.campaignId !== null;
       if (!hasAccess) {
         console.log(
-          "DEBUG: Forbidden access to character - ownerId:",
-          character.ownerId,
+          "DEBUG: Forbidden access to character - userId:",
+          character.userId,
           "campaignId:",
           character.campaignId,
           "userId:",

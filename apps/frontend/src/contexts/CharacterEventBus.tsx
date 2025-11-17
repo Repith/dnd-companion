@@ -13,6 +13,8 @@ import {
   CharacterResponseDto,
   UpdateCharacterDto,
   CreateCharacterDto,
+  AbilityScoresDto,
+  AbilityName,
 } from "@/types/character";
 import { characterApi } from "@/lib/api/character";
 
@@ -21,12 +23,39 @@ import { characterApi } from "@/lib/api/character";
  */
 export interface CharacterEventPayload {
   characterId?: string;
+
   previousState?: CharacterResponseDto;
   newState?: CharacterResponseDto;
   changes?: Partial<CharacterResponseDto>;
   validationErrors?: string[];
+
+  // Ability score updates
+  ability?: AbilityName;
+  abilityKey?: keyof AbilityScoresDto;
+  oldScore?: number;
+  newScore?: number;
+  modifierChange?: number;
+
+  // Saving throws / skills
+  skill?: string;
+  proficient?: boolean;
+  expertise?: boolean;
+
+  // Errors / context
+  error?: string;
+  context?: Record<string, any>;
+
   metadata?: Record<string, any>;
 }
+
+export interface CharacterEvent extends BaseEvent {
+  type: EventType;
+  payload: CharacterEventPayload & BaseEvent["payload"];
+}
+
+export type CharacterEventHandler = (
+  event: CharacterEvent,
+) => void | Promise<void>;
 
 /**
  * Event dla charakteru – typ *tylko* EventType
@@ -61,7 +90,7 @@ interface CharacterEventBusContextType {
   // Eventy
   publishEvent: (event: CharacterEvent) => Promise<void>;
   subscribe: (
-    handler: EventHandler<CharacterEvent>,
+    handler: CharacterEventHandler,
     filter?: CharacterEventFilter,
   ) => () => void;
 
@@ -82,7 +111,7 @@ interface CharacterEventBusContextType {
   // Ability / profki
   updateAbilityScore: (
     characterId: string,
-    ability: string,
+    ability: AbilityName,
     newScore: number,
   ) => Promise<CharacterResponseDto>;
 
@@ -130,7 +159,7 @@ const CharacterEventBusContext = createContext<
 class CharacterEventBus {
   private handlers: Map<
     string,
-    { handler: EventHandler<CharacterEvent>; filter?: CharacterEventFilter }
+    { handler: CharacterEventHandler; filter?: CharacterEventFilter }
   > = new Map();
 
   private eventHistory: CharacterEventHistory = {
@@ -140,8 +169,8 @@ class CharacterEventBus {
   };
 
   subscribe(
-    handler: EventHandler<CharacterEvent>,
-    filter?: CharacterEventFilter,
+    handler: CharacterEventHandler,
+    filter: CharacterEventFilter,
   ): () => void {
     const id = Math.random().toString(36).slice(2);
     this.handlers.set(id, { handler, filter });
@@ -504,19 +533,28 @@ export function CharacterEventBusProvider({
   const updateAbilityScore = useCallback(
     async (
       characterId: string,
-      ability: string,
+      ability: AbilityName,
       newScore: number,
     ): Promise<CharacterResponseDto> => {
       try {
-        const current = await characterApi.getById(characterId);
-        const abilityScores = current.abilityScores ?? {};
-        const oldScore =
-          abilityScores[ability as keyof typeof abilityScores] ?? 10;
+        const currentCharacter = await characterApi.getById(characterId);
 
-        const updated = await characterApi.update(characterId, {
+        const baseScores: AbilityScoresDto = {
+          strength: currentCharacter.abilityScores?.strength ?? 10,
+          dexterity: currentCharacter.abilityScores?.dexterity ?? 10,
+          constitution: currentCharacter.abilityScores?.constitution ?? 10,
+          intelligence: currentCharacter.abilityScores?.intelligence ?? 10,
+          wisdom: currentCharacter.abilityScores?.wisdom ?? 10,
+          charisma: currentCharacter.abilityScores?.charisma ?? 10,
+        };
+
+        const abilityKey = ability.toLowerCase() as keyof AbilityScoresDto;
+        const oldScore = baseScores[abilityKey];
+
+        const updatedCharacter = await characterApi.update(characterId, {
           abilityScores: {
-            ...abilityScores,
-            [ability]: newScore,
+            ...baseScores,
+            [abilityKey]: newScore,
           },
         });
 
@@ -526,21 +564,22 @@ export function CharacterEventBusProvider({
 
         await eventBus.publishEvent({
           type: EventType.ABILITY_SCORE_UPDATED,
-          campaignId: updated.campaignId,
+          campaignId: updatedCharacter.campaignId,
           timestamp: new Date(),
           payload: {
             characterId,
             ability,
+            abilityKey,
             oldScore,
             newScore,
             modifierChange,
-            previousState: current,
-            newState: updated,
+            previousState: currentCharacter,
+            newState: updatedCharacter,
             metadata: { source: "ability-card", operationType: "update" },
           },
         } as CharacterEvent);
 
-        return updated;
+        return updatedCharacter;
       } catch (error) {
         await eventBus.publishEvent({
           type: EventType.ERROR_OCCURRED,
@@ -688,7 +727,6 @@ export function CharacterEventBusProvider({
     compareCharacters,
     getEventStats: eventBus.getEventStats.bind(eventBus),
 
-    // "dynamiczne" bo czytane z eventBusu
     get canUndo() {
       return eventBus.canUndo();
     },
@@ -705,7 +743,7 @@ export function CharacterEventBusProvider({
 }
 
 /**
- * Hook – dostęp do EventBusa
+ * Hook – access to EventBusa
  */
 export function useCharacterEventBus() {
   const ctx = useContext(CharacterEventBusContext);
@@ -718,10 +756,10 @@ export function useCharacterEventBus() {
 }
 
 /**
- * Hook – prosty wrapper na subscribe
+ * Hook – subscribe wrapper
  */
 export function useCharacterEvents(
-  handler: EventHandler<CharacterEvent>,
+  handler: CharacterEventHandler,
   filter?: CharacterEventFilter,
 ) {
   const bus = useCharacterEventBus();

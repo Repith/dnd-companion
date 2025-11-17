@@ -4,7 +4,10 @@
   "version": "0.1.0",
   "workspaces": [
     "apps/frontend",
-    "apps/backend"
+    "apps/backend",
+    "libs/domain",
+    "libs/application",
+    "libs/infrastructure"
   ],
   "scripts": {
     "dev": "concurrently \"cd apps/backend && npm run dev\" \"cd apps/frontend && npm run dev\"",
