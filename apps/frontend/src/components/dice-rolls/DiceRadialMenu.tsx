@@ -5,6 +5,7 @@ import {
   ExportedRollResult,
   useDiceRoller,
 } from "@/contexts/dice-roller";
+import { useDice } from "@/contexts/dice-roller/hook";
 import { useState } from "react";
 
 const DICE_TYPES: { label: string; notation: DiceNotation }[] = [
@@ -25,10 +26,10 @@ export function DiceRadialMenu({
   onRollResolved,
   characterId,
 }: DiceRadialMenuProps) {
-  const { isReady, roll } = useDiceRoller();
+  const { isRolling, build } = useDice();
+  const roller = useDiceRoller();
 
   const [isOpen, setIsOpen] = useState(false);
-  const [isRolling, setIsRolling] = useState(false);
   const [history, setHistory] = useState<ExportedRollResult[]>([]);
   const [showHistory, setShowHistory] = useState(false);
 
@@ -37,27 +38,19 @@ export function DiceRadialMenu({
     setIsOpen((prev) => !prev);
   };
 
-  const handleRollClick = async (notation: DiceNotation) => {
-    if (!isReady) return;
+  const handleRollClick = async (notation: string) => {
+    if (!roller.isReady || roller.isRolling) return;
 
     setIsOpen(false);
-    setIsRolling(true);
+    const result = await build()
+      .custom(notation)
+      .label(`Quick Roll (${notation})`)
+      .roll();
 
-    try {
-      const result = await roll(
-        [notation],
-        { label: String(notation) },
-        characterId,
-      );
-      setHistory((prev) => [result, ...prev].slice(0, 3));
-      setShowHistory(true);
+    console.log("TRIGGER HERE");
 
-      onRollResolved?.(result);
-    } catch (err) {
-      console.error("Dice roll failed", err);
-    } finally {
-      setIsRolling(false);
-    }
+    setHistory((prev) => [result, ...prev].slice(0, 3));
+    setShowHistory(true);
   };
 
   /** TRUE HEX DIMENSIONS */
@@ -93,7 +86,7 @@ export function DiceRadialMenu({
           return (
             <button
               key={die.label}
-              onClick={() => handleRollClick(die.notation)}
+              onClick={() => handleRollClick(die.notation.toString())}
               disabled={!isOpen}
               className={`
                 absolute flex h-20 w-20 items-center justify-center

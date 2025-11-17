@@ -2,7 +2,6 @@
 
 import {
   createContext,
-  useContext,
   useEffect,
   useRef,
   useState,
@@ -10,327 +9,343 @@ import {
   ReactNode,
 } from "react";
 
-import DisplayResults from "@3d-dice/dice-ui/src/displayResults";
 import DiceBox from "@3d-dice/dice-box";
+import DisplayResults from "@3d-dice/dice-ui/src/displayResults";
+import { motion, AnimatePresence } from "framer-motion";
 
 import { useAuth } from "@/contexts/AuthContext";
-import { diceRollApi } from "@/lib/api/dice-roll";
-import { sessionApi } from "@/lib/api/session";
-import { useRollHistory } from "@/contexts/RollHistoryContext";
+import { useCharacterEventBus } from "@/contexts/CharacterEventBus";
 
 import type {
-  DiceTheme,
   DiceNotation,
-  DiceBoxRollResults,
   DiceRollMeta,
   ExportedRollResult,
+  DiceBoxRollGroup,
 } from "./types";
 
+import type { DiceRollOptions } from "@/types/dice-rolls";
+
+/* ============================================================================
+ * Context + Interface
+ * ========================================================================== */
 interface DiceRollerContextValue {
   isReady: boolean;
-  theme: DiceTheme;
-  themeColor: string;
-  lastExportedRoll: ExportedRollResult | null;
-
+  isRolling: boolean;
   roll: (
     notations: DiceNotation[],
     meta?: DiceRollMeta,
-    characterId?: string,
-    sessionId?: string,
+    opts?: DiceRollOptions,
   ) => Promise<ExportedRollResult>;
-
   clear: () => void;
-
-  setTheme: (theme: DiceTheme) => void;
-  setThemeColor: (hex: string) => void;
+  build: () => DiceRollBuilder;
 }
 
 export const DiceRollerContext = createContext<DiceRollerContextValue | null>(
   null,
 );
 
-const AUTO_HIDE_MS = 3000;
-
+/* ============================================================================
+ * Provider
+ * ========================================================================== */
 export default function DiceRollerProvider({
   children,
 }: {
   children: ReactNode;
 }) {
-  const diceBoxRef = useRef<any | null>(null);
-  const displayRef = useRef<any | null>(null);
-  const hideTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const boxRef = useRef<any>(null);
+  const displayRef = useRef<any>(null);
+  const hideTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [isRolling, setIsRolling] = useState(false);
 
-  const [theme, setThemeState] = useState<DiceTheme>("default");
-  const [themeColor, setThemeColorState] = useState<string>("#9d34c9");
   const [isReady, setIsReady] = useState(false);
-  const [lastExportedRoll, setLastExportedRoll] =
-    useState<ExportedRollResult | null>(null);
+  const [lastResult, setLastResult] = useState<ExportedRollResult | null>(null);
 
   const { user } = useAuth();
-  const { invalidateRolls } = useRollHistory();
+  const eventBus = useCharacterEventBus();
 
+  /* --------------------------- INIT ------------------------------------ */
   useEffect(() => {
     let cancelled = false;
 
     (async () => {
-      try {
-        const box = new DiceBox("#dice-box", {
-          assetPath: "/assets/dice-box/",
-          theme,
-          themeColor,
-          scale: 5,
-          gravity: 3,
-          delay: 5,
-        });
+      const box = new DiceBox("#dice-box", {
+        assetPath: "/assets/dice-box/",
+        theme: "default",
+        themeColor: "#9d34c9",
+        gravity: 4,
+        scale: 4.5,
+        delay: 7,
+      });
 
-        await box.init();
-        if (cancelled) {
-          box.clear();
-          return;
-        }
+      await box.init();
+      if (cancelled) return;
 
-        const display = new DisplayResults("#dice-box");
-
-        diceBoxRef.current = box;
-        displayRef.current = display;
-
-        setIsReady(true);
-      } catch (error) {
-        console.error("DiceBox init failed:", error);
-      }
+      boxRef.current = box;
+      displayRef.current = new DisplayResults("#dice-box");
+      setIsReady(true);
     })();
 
     return () => {
       cancelled = true;
-
-      if (hideTimeoutRef.current) {
-        clearTimeout(hideTimeoutRef.current);
-      }
-
-      diceBoxRef.current?.clear();
-      diceBoxRef.current?.hide?.();
-      diceBoxRef.current = null;
-
-      displayRef.current?.clear();
+      hideTimeoutRef.current && clearTimeout(hideTimeoutRef.current);
+      boxRef.current?.clear?.();
+      displayRef.current?.clear?.();
+      boxRef.current = null;
       displayRef.current = null;
-
-      setIsReady(false);
-      setLastExportedRoll(null);
     };
   }, []);
 
-  /* ---------------------- Auto-hide ----------------- */
-
+  /* --------------------------- AUTO HIDE ------------------------------- */
   const scheduleHide = useCallback(() => {
-    if (hideTimeoutRef.current) {
-      clearTimeout(hideTimeoutRef.current);
-    }
-
-    const box = diceBoxRef.current;
-    const display = displayRef.current;
-
+    hideTimeoutRef.current && clearTimeout(hideTimeoutRef.current);
     hideTimeoutRef.current = setTimeout(() => {
-      box?.hide?.();
-      display?.clear();
-      setLastExportedRoll(null);
-    }, AUTO_HIDE_MS);
+      boxRef.current?.hide?.();
+      displayRef.current?.clear?.();
+      setLastResult(null);
+    }, 3000);
   }, []);
 
-  /* --------------------------- roll() ------------------------------ */
-
+  /* ---------------------------- ROLL ----------------------------------- */
   const roll = useCallback(
     async (
       notations: DiceNotation[],
-      meta?: DiceRollMeta,
-      characterId?: string,
-      sessionId?: string,
+      meta: DiceRollMeta = {},
+      opts: DiceRollOptions = {},
     ): Promise<ExportedRollResult> => {
-      const box = diceBoxRef.current;
+      const box = boxRef.current;
       const display = displayRef.current;
 
-      if (!box) throw new Error("DiceBox nie jest jeszcze zainicjalizowany");
+      if (!box) throw new Error("DiceBox not initialized");
+
+      /* Ensure we always have valid notations */
       if (!notations || notations.length === 0) {
-        throw new Error("Musisz podać przynajmniej jedną notację rzutu");
+        notations = ["1d20"];
       }
 
-      if (hideTimeoutRef.current) {
-        clearTimeout(hideTimeoutRef.current);
-        hideTimeoutRef.current = null;
-      }
+      setIsRolling(true);
 
-      const notationArg =
-        notations.length === 1 ? (notations[0] as any) : (notations as any);
+      try {
+        /* Clear hide timeout */
+        hideTimeoutRef.current && clearTimeout(hideTimeoutRef.current);
+        box.show();
 
-      box.show();
+        /* Roll raw dice */
+        const arg = notations.length === 1 ? notations[0] : notations;
+        const results = await box.roll(arg);
 
-      const results: DiceBoxRollResults = await box.roll(notationArg);
+        display?.clear?.();
 
-      // Nadal czyścimy / przygotowujemy DisplayResults (np. na przyszłość),
-      // ale nie polegamy na jego tekście.
-      display?.clear?.();
+        /* Extract roll values safely */
+        const rawRolls = results.flatMap((r: DiceBoxRollGroup) => r.value);
 
-      const individualResults = results.flatMap((group) =>
-        (group.rolls ?? []).map((r) => r.value),
-      );
+        if (rawRolls.length === 0) {
+          console.warn("DiceBox returned no rolls. Fallback to 1.");
+          rawRolls.push(1);
+        }
 
-      const total = results.reduce((sum, group) => sum + (group.value ?? 0), 0);
+        /* Select die for adv/dis */
+        let selected = rawRolls[0];
+        if (opts.advantage) selected = Math.max(...rawRolls);
+        if (opts.disadvantage) selected = Math.min(...rawRolls);
 
-      const expressionBase = individualResults.length
-        ? individualResults.join(" + ")
-        : String(total);
+        /* Apply modifiers */
+        const mods = opts.modifiers ?? [];
+        const modSum = mods.reduce((a, b) => a + b, 0);
+        const total = selected + modSum;
 
-      const exported: ExportedRollResult = {
-        id: meta?.id ?? `dice-roll-${Date.now()}`,
-        label: meta?.label ?? "",
-        notations,
-        total,
-        individualResults,
-        createdAt: new Date().toISOString(),
-        expression: `${expressionBase} = ${total}`,
-      };
+        /* Build expression */
+        let expression = `${selected}`;
+        if (mods.length > 0)
+          expression +=
+            " " + mods.map((n) => (n >= 0 ? `+ ${n}` : `${n}`)).join(" ");
+        expression += ` = ${total}`;
 
-      setLastExportedRoll(exported);
-      scheduleHide();
-
-      // If characterId is provided and user is authenticated, save to backend and history
-      if (characterId && user) {
-        console.log("DEBUG: Attempting to save dice roll", {
-          characterId,
-          userId: user.id,
+        /* Build exported result */
+        const exported: ExportedRollResult = {
+          id: meta.id ?? `roll-${Date.now()}`,
+          label: meta.label ?? "",
+          notations,
           total,
-        });
-        try {
-          const diceType = notations
-            .map((n) =>
-              typeof n === "string"
-                ? n
-                : `${n.qty ?? 1}d${n.sides}${
-                    n.modifier ? `+${n.modifier}` : ""
-                  }`,
-            )
-            .join(" + ");
+          individualResults: rawRolls,
+          expression,
+          createdAt: new Date().toISOString(),
+        };
 
-          const numberOfDice = individualResults.length;
+        setLastResult(exported);
+        scheduleHide();
 
-          const rollData = {
-            diceType,
-            numberOfDice,
-            individualResults,
-            totalResult: total,
-            characterId,
-          };
+        /* Publish event if logged-in user exists */
+        if (user) eventBus.publishDiceRoll(exported);
 
-          console.log("DEBUG: Calling diceRollApi.create with", rollData);
-          const savedRoll = await diceRollApi.create(rollData);
-          console.log("DEBUG: Saved roll successfully", savedRoll);
-          console.log("DEBUG: Calling invalidateRolls for", characterId);
-          invalidateRolls(characterId);
-        } catch (error) {
-          console.error("Failed to save dice roll:", error);
-          // Don't throw error to avoid breaking the roll functionality
-        }
-      } else {
-        console.log(
-          "DEBUG: Skipping save - characterId:",
-          characterId,
-          "user:",
-          !!user,
-        );
+        return exported;
+      } finally {
+        setIsRolling(false);
       }
-
-      // If sessionId is provided, publish roll event via CQRS
-      if (sessionId && user) {
-        try {
-          const rollEventData: any = {
-            notation: notations
-              .map((n) =>
-                typeof n === "string"
-                  ? n
-                  : `${n.qty ?? 1}d${n.sides}${
-                      n.modifier ? `+${n.modifier}` : ""
-                    }`,
-              )
-              .join(" + "),
-            result: total,
-            individualResults,
-          };
-
-          if (meta?.label) rollEventData.label = meta.label;
-          if (characterId) rollEventData.characterId = characterId;
-
-          console.log("DEBUG: Calling sessionApi.rollDice with", {
-            sessionId,
-            rollEventData,
-          });
-          await sessionApi.rollDice(sessionId, rollEventData);
-          console.log("DEBUG: Roll event published successfully");
-        } catch (error) {
-          console.error("Failed to publish roll event:", error);
-          // Don't throw error to avoid breaking the roll functionality
-        }
-      }
-
-      return exported;
     },
-    [scheduleHide, user, invalidateRolls],
+    [scheduleHide, user, eventBus],
   );
 
-  /* --------------------------- clear() ----------------------------- */
-
+  /* ----------------------------- CLEAR --------------------------------- */
   const clear = useCallback(() => {
-    if (hideTimeoutRef.current) {
-      clearTimeout(hideTimeoutRef.current);
-      hideTimeoutRef.current = null;
-    }
-
-    diceBoxRef.current?.clear();
-    diceBoxRef.current?.hide?.();
-    displayRef.current?.clear();
-    setLastExportedRoll(null);
+    hideTimeoutRef.current && clearTimeout(hideTimeoutRef.current);
+    boxRef.current?.hide?.();
+    boxRef.current?.clear?.();
+    displayRef.current?.clear?.();
+    setLastResult(null);
   }, []);
 
-  /* ---------------------- Zmiana theme / koloru -------------------- */
-
-  const setTheme = useCallback((nextTheme: DiceTheme) => {
-    setThemeState(nextTheme);
-    const box = diceBoxRef.current;
-    if (box) {
-      box.updateConfig({ theme: nextTheme });
-    }
-  }, []);
-
-  const setThemeColor = useCallback((hex: string) => {
-    setThemeColorState(hex);
-    const box = diceBoxRef.current;
-    if (box) {
-      box.updateConfig({ themeColor: hex });
-    }
-  }, []);
-
+  /* ------------------------- CONTEXT VALUE ----------------------------- */
   const value: DiceRollerContextValue = {
     isReady,
-    theme,
-    themeColor,
-    lastExportedRoll,
+    isRolling,
     roll,
     clear,
-    setTheme,
-    setThemeColor,
+    build: () => new DiceRollBuilder(roll),
   };
 
   return (
     <DiceRollerContext.Provider value={value}>
       {children}
 
-      <div id="dice-box" className="fixed inset-0 pointer-events-none z-9999" />
+      {/* Dice Canvas */}
+      <div
+        id="dice-box"
+        className="fixed inset-0 pointer-events-none z-[9999]"
+      />
 
-      {lastExportedRoll && (
-        <div className="fixed inset-0 flex items-center justify-center pointer-events-none z-10000">
-          <div className="px-4 py-3 text-xl font-bold border shadow-2xl rounded-xl bg-slate-900/90 text-slate-50 border-slate-600">
-            <span className="font-mono">{lastExportedRoll.expression}</span>
-          </div>
-        </div>
-      )}
+      {/* Roll Overlay */}
+      <AnimatePresence>
+        {lastResult && <DiceResultOverlay result={lastResult} />}
+      </AnimatePresence>
     </DiceRollerContext.Provider>
+  );
+}
+
+/* ============================================================================
+ * DiceBuilder (NO MUTATION BUGS)
+ * ========================================================================== */
+class DiceRollBuilder {
+  private _notations: DiceNotation[] = [];
+  private _meta: DiceRollMeta = {};
+  private _opts: DiceRollOptions = { modifiers: [] };
+
+  constructor(private submit: DiceRollerContextValue["roll"]) {}
+
+  private clone() {
+    const b = new DiceRollBuilder(this.submit);
+    b._notations = [...this._notations];
+    b._meta = { ...this._meta };
+    b._opts = {
+      ...this._opts,
+      modifiers: [...(this._opts.modifiers ?? [])],
+    };
+    return b;
+  }
+
+  /* Base dice */
+  d20() {
+    const b = this.clone();
+    b._notations = ["1d20"];
+    return b;
+  }
+
+  advantage(mod?: number) {
+    const b = this.clone();
+    b._notations = ["1d20", "1d20"];
+    b._opts.advantage = true;
+    if (mod) b._opts.modifiers!.push(mod);
+    return b;
+  }
+
+  disadvantage(mod?: number) {
+    const b = this.clone();
+    b._notations = ["1d20", "1d20"];
+    b._opts.disadvantage = true;
+    if (mod) b._opts.modifiers!.push(mod);
+    return b;
+  }
+
+  modifier(value: number) {
+    const b = this.clone();
+    b._opts.modifiers!.push(value);
+    return b;
+  }
+
+  attackRoll(mod: number) {
+    return this.d20().modifier(mod).label("Attack Roll");
+  }
+
+  damage(notation: string, mod?: number) {
+    const b = this.clone();
+    b._notations = [notation];
+    if (mod) b._opts.modifiers!.push(mod);
+    b._meta.label = "Damage Roll";
+    return b;
+  }
+
+  heal(notation: string, mod?: number) {
+    const b = this.clone();
+    b._notations = [notation];
+    if (mod) b._opts.modifiers!.push(mod);
+    b._meta.label = "Healing Roll";
+    return b;
+  }
+
+  savingThrow(mod: number) {
+    return this.d20().modifier(mod).label("Saving Throw");
+  }
+
+  skillCheck(name: string, mod: number) {
+    return this.d20().modifier(mod).label(`${name} Check`);
+  }
+
+  custom(notation: string) {
+    const b = this.clone();
+    b._notations = [notation];
+    return b;
+  }
+
+  label(text: string) {
+    const b = this.clone();
+    b._meta.label = text;
+    return b;
+  }
+
+  async roll() {
+    return await this.submit(this._notations, this._meta, this._opts);
+  }
+}
+
+/* ============================================================================
+ * Result Overlay
+ * ========================================================================== */
+function DiceResultOverlay({ result }: { result: ExportedRollResult }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.85 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.85 }}
+      transition={{ duration: 0.2 }}
+      className="fixed inset-0 flex items-center justify-center pointer-events-none z-[10000]"
+    >
+      <motion.div
+        initial={{ y: 20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        exit={{ y: 10, opacity: 0 }}
+        transition={{ duration: 0.2 }}
+        className="px-5 py-3 font-mono text-2xl text-center text-white border shadow-lg rounded-xl bg-slate-900/90 border-purple-600/40 backdrop-blur-md"
+        style={{
+          boxShadow:
+            "0 0 25px rgba(157,52,201,0.35), 0 0 60px rgba(157,52,201,0.25)",
+        }}
+      >
+        {result.label && (
+          <div className="mb-1 text-sm text-center text-purple-300">
+            {result.label}
+          </div>
+        )}
+        {result.expression}
+      </motion.div>
+    </motion.div>
   );
 }

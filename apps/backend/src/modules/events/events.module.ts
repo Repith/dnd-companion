@@ -17,6 +17,7 @@ import {
   QuestFinishedEventHandler,
   ExperienceGainedEventHandler,
   LevelUpDomainEventHandler,
+  DiceRollEventHandler,
 } from "./event-handlers";
 
 @Module({
@@ -36,6 +37,7 @@ import {
     GameEventQuestFinishedHandler,
     // CQRS domain event handlers
     SkillProficiencyAddedEventHandler,
+    DiceRollEventHandler,
     QuestFinishedEventHandler,
     ExperienceGainedEventHandler,
     LevelUpDomainEventHandler,

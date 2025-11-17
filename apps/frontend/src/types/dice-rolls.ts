@@ -9,3 +9,16 @@ export interface ExportedRollResult {
   createdAt: string;
   expression: string;
 }
+
+export interface AttackRollResult {
+  attack: ExportedRollResult;
+  damage?: ExportedRollResult | null;
+}
+
+export interface DiceRollOptions {
+  advantage?: boolean;
+  disadvantage?: boolean;
+  modifiers?: number[];
+  type?: "attack" | "damage" | "heal" | "check" | "saving-throw" | "custom";
+  context?: string;
+}

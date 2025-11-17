@@ -1,9 +1,9 @@
+import { EventResponseDto } from "@/types/event";
 import api from "./auth";
 import {
   CreateSessionDto,
   SessionResponseDto,
   CreateEventDto,
-  EventResponseDto,
   HPAdjustmentDto,
   ItemGrantDto,
 } from "@/types/session";

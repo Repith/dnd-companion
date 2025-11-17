@@ -8,7 +8,7 @@ import React, {
   ReactNode,
   useEffect,
 } from "react";
-import { EventHandler, EventFilter, BaseEvent, EventType } from "@/types/event";
+import { EventFilter, BaseEvent, EventType } from "@/types/event";
 import {
   CharacterResponseDto,
   UpdateCharacterDto,
@@ -17,6 +17,7 @@ import {
   AbilityName,
 } from "@/types/character";
 import { characterApi } from "@/lib/api/character";
+import { ExportedRollResult } from "@/types/dice-rolls";
 
 /**
  * Payload dla eventów charakteru
@@ -115,6 +116,8 @@ interface CharacterEventBusContextType {
     newScore: number,
   ) => Promise<CharacterResponseDto>;
 
+  publishDiceRoll: (roll: ExportedRollResult) => Promise<void>;
+
   updateSavingThrowProficiency: (
     characterId: string,
     ability: string,
@@ -206,7 +209,6 @@ class CharacterEventBus {
       if ((event as any).targetId !== (filter as any).targetId) return false;
     }
 
-    // Rozszerzenie filtrem charakteru
     if (filter.characterId && payload.characterId !== filter.characterId) {
       return false;
     }
@@ -654,6 +656,32 @@ export function CharacterEventBusProvider({
     [eventBus],
   );
 
+  const publishDiceRoll = useCallback(
+    async (roll: ExportedRollResult): Promise<void> => {
+      try {
+        await eventBus.publishEvent({
+          type: EventType.DICE_ROLL,
+          global: true,
+          timestamp: new Date(),
+          payload: roll,
+        } as CharacterEvent);
+      } catch (error) {
+        await eventBus.publishEvent({
+          type: EventType.ERROR_OCCURRED,
+          global: true,
+          timestamp: new Date(),
+          payload: {
+            error: error instanceof Error ? error.message : "Unknown error",
+            context: { operation: "publishDiceRoll", roll },
+            metadata: { severity: "error" },
+          },
+        } as CharacterEvent);
+        throw error;
+      }
+    },
+    [eventBus],
+  );
+
   const updateSkillProficiency = useCallback(
     async (
       characterId: string,
@@ -713,6 +741,7 @@ export function CharacterEventBusProvider({
   const value: CharacterEventBusContextType = {
     publishEvent: eventBus.publishEvent.bind(eventBus),
     subscribe: eventBus.subscribe.bind(eventBus),
+    publishDiceRoll,
     createCharacter,
     updateCharacter,
     deleteCharacter,

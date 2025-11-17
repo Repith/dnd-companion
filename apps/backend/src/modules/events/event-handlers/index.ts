@@ -21,6 +21,7 @@ import { QuestFinishedDomainEvent } from "../../quest/events/quest-finished.even
 import { ExperienceGainedDomainEvent } from "../../character/events/experience-gained.event";
 import { LevelUpDomainEvent } from "../../character/events/level-up.event";
 import { QuestStatus } from "../../quest/dto";
+import { DiceRollDomainEvent } from "@/modules/character/events/dice-roll.event";
 
 /**
  * Base class for event handlers
@@ -776,6 +777,21 @@ export class LevelUpDomainEventHandler
     );
 
     // Map domain event to GameEvent and publish
+    await this.eventBus.publish(event);
+  }
+}
+
+@Injectable()
+@EventsHandler(DiceRollDomainEvent)
+export class DiceRollEventHandler
+  implements IEventHandler<DiceRollDomainEvent>
+{
+  private readonly logger = new Logger(DiceRollEventHandler.name);
+  constructor(private readonly eventBus: EventBusService) {}
+  async handle(event: DiceRollDomainEvent): Promise<void> {
+    this.logger.debug(
+      `Handling domain event: DiceRoll for character ${event.targetId}`,
+    );
     await this.eventBus.publish(event);
   }
 }
